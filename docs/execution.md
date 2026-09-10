@@ -59,7 +59,7 @@ Public docs may describe auth, but no writable demo administrator password is pu
 
 ## Milestone execution checklist
 
-Original numbering 0–13 remains intact (14 milestones total). All later entries are planned, not complete. Before each milestone inspect repository status and instructions, explain changes/dependencies, implement only its slice, verify, fix, and update docs.
+Original numbering 0–13 remains intact (14 milestones total). M0 is approved; M1 is implemented (verification in milestone-1.md). M2–M13 remain planned. Before each milestone inspect repository status and instructions, explain changes/dependencies, implement only its slice, verify, fix, and update docs.
 
 | Milestone | Dependencies | Scope and exit gate |
 |---|---|---|
@@ -88,6 +88,6 @@ Original numbering 0–13 remains intact (14 milestones total). All later entrie
 - [x] Environment, testing and deployment plans specified.
 - [x] Blueprint weaknesses reconciled explicitly.
 - [x] Milestone dependencies/checklist defined; application implementation not started.
-- [ ] Owner accepts the plan before M1 (required by brief §60).
+- [x] Owner accepted the plan on 2026-09-10 and authorized continuation (brief §60 gate satisfied).
 
-M0 documentation preparation is complete when verification.md records the checks; approval and later runtime verification are distinct. No automatic continuation to M1 in this task.
+M0 documentation preparation and approval are complete. Milestone 1 implements the foundation; its runtime verification is recorded separately in milestone-1.md.

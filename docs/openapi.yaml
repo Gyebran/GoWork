@@ -2,11 +2,11 @@ openapi: 3.0.3
 info:
   title: GoWork API
   version: 0.1.0
-  description: 'Milestone 0 design contract; endpoints are not implemented. Read docs/contracts.md
-    for ownership, lifecycle and validation rules. 1 MiB JSON body limit; reject unknown/repeated
-    query parameters and duplicate JSON keys. Global routing errors: 404 NOT_FOUND,
-    405 METHOD_NOT_ALLOWED. All errors follow Error schema and all responses include
-    X-Request-ID.'
+  description: 'V1 design contract. Milestone 1 implements GET /health only; all other
+    endpoints are planned. Read docs/contracts.md for ownership, lifecycle and validation
+    rules. 1 MiB JSON body limit; reject unknown/repeated query parameters and duplicate
+    JSON keys. Global routing errors: 404 NOT_FOUND, 405 METHOD_NOT_ALLOWED. All errors
+    follow Error schema and all responses include X-Request-ID.'
 servers:
 - url: http://localhost:8080
   description: Planned local server, not currently running
@@ -41,6 +41,11 @@ paths:
                     - ok
                 required:
                 - status
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+      x-implemented-milestone: 1
   /ready:
     get:
       operationId: ready
