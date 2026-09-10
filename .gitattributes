@@ -1,0 +1,2 @@
+# Preserve the uploaded source brief exactly, including its Windows line endings.
+docs/project-brief.txt -text whitespace=cr-at-eol

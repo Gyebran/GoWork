@@ -1,0 +1,1711 @@
+openapi: 3.0.3
+info:
+  title: GoWork API
+  version: 0.1.0
+  description: 'Milestone 0 design contract; endpoints are not implemented. Read docs/contracts.md
+    for ownership, lifecycle and validation rules. 1 MiB JSON body limit; reject unknown/repeated
+    query parameters and duplicate JSON keys. Global routing errors: 404 NOT_FOUND,
+    405 METHOD_NOT_ALLOWED. All errors follow Error schema and all responses include
+    X-Request-ID.'
+servers:
+- url: http://localhost:8080
+  description: Planned local server, not currently running
+security:
+- bearerAuth: []
+paths:
+  /health:
+    get:
+      operationId: health
+      tags:
+      - Operations
+      security: []
+      responses:
+        '200':
+          description: Process alive
+          headers:
+            X-Request-ID:
+              description: Sanitized incoming correlation ID or generated UUID.
+              schema:
+                type: string
+                minLength: 1
+                maxLength: 64
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  status:
+                    type: string
+                    enum:
+                    - ok
+                required:
+                - status
+  /ready:
+    get:
+      operationId: ready
+      tags:
+      - Operations
+      security: []
+      responses:
+        '200':
+          description: Ready for traffic
+          headers:
+            X-Request-ID:
+              description: Sanitized incoming correlation ID or generated UUID.
+              schema:
+                type: string
+                minLength: 1
+                maxLength: 64
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  status:
+                    type: string
+                    enum:
+                    - ready
+                required:
+                - status
+        '503':
+          $ref: '#/components/responses/503'
+  /docs:
+    get:
+      operationId: swaggerUI
+      tags:
+      - Operations
+      security: []
+      responses:
+        '200':
+          description: Available in M11.
+          headers:
+            X-Request-ID:
+              description: Sanitized incoming correlation ID or generated UUID.
+              schema:
+                type: string
+                minLength: 1
+                maxLength: 64
+          content:
+            text/html:
+              schema:
+                type: string
+  /openapi.yaml:
+    get:
+      operationId: openAPI
+      tags:
+      - Operations
+      security: []
+      responses:
+        '200':
+          description: Available in M11.
+          headers:
+            X-Request-ID:
+              description: Sanitized incoming correlation ID or generated UUID.
+              schema:
+                type: string
+                minLength: 1
+                maxLength: 64
+          content:
+            application/yaml:
+              schema:
+                type: string
+  /api/v1/auth/login:
+    post:
+      operationId: login
+      tags:
+      - Auth
+      summary: login
+      description: Uniform 401 for missing user, wrong password or inactive user.
+        No public registration. HS256 access token, 900 seconds.
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-ID:
+              description: Sanitized incoming correlation ID or generated UUID.
+              schema:
+                type: string
+                minLength: 1
+                maxLength: 64
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResultResponse'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '409':
+          $ref: '#/components/responses/409'
+        '413':
+          $ref: '#/components/responses/413'
+        '415':
+          $ref: '#/components/responses/415'
+        '422':
+          $ref: '#/components/responses/422'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Login'
+  /api/v1/auth/me:
+    get:
+      operationId: getCurrentUser
+      tags:
+      - Auth
+      summary: getCurrentUser
+      description: Requires active authenticated user; no user:read permission required.
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-ID:
+              description: Sanitized incoming correlation ID or generated UUID.
+              schema:
+                type: string
+                minLength: 1
+                maxLength: 64
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+  /api/v1/users:
+    get:
+      operationId: listUsers
+      tags:
+      - User
+      summary: listUsers
+      description: Fixed created_at DESC,id DESC order; page/count use one snapshot.
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-ID:
+              description: Sanitized incoming correlation ID or generated UUID.
+              schema:
+                type: string
+                minLength: 1
+                maxLength: 64
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserList'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '422':
+          $ref: '#/components/responses/422'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+      x-permissions:
+      - user:read
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100000
+          default: 1
+        description: Exact filter; combines with AND and authorization scope.
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        description: Exact filter; combines with AND and authorization scope.
+      - name: role
+        in: query
+        required: false
+        schema: &id002
+          type: string
+          enum:
+          - ADMIN
+          - MANAGER
+          - TECHNICIAN
+        description: Exact filter; combines with AND and authorization scope.
+      - name: is_active
+        in: query
+        required: false
+        schema:
+          type: boolean
+        description: Exact filter; combines with AND and authorization scope.
+    post:
+      operationId: createUser
+      tags:
+      - User
+      summary: createUser
+      description: See contracts.md for policy and transactional invariants.
+      responses:
+        '201':
+          description: Success
+          headers:
+            X-Request-ID:
+              description: Sanitized incoming correlation ID or generated UUID.
+              schema:
+                type: string
+                minLength: 1
+                maxLength: 64
+            Location:
+              description: Relative URL of created resource.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '409':
+          $ref: '#/components/responses/409'
+        '413':
+          $ref: '#/components/responses/413'
+        '415':
+          $ref: '#/components/responses/415'
+        '422':
+          $ref: '#/components/responses/422'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+      x-permissions:
+      - user:create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+  /api/v1/users/{id}:
+    get:
+      operationId: getUser
+      tags:
+      - User
+      summary: getUser
+      description: 404 when missing; 403 for existing resource outside allowed scope.
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-ID:
+              description: Sanitized incoming correlation ID or generated UUID.
+              schema:
+                type: string
+                minLength: 1
+                maxLength: 64
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+      x-permissions:
+      - user:read
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: &id001
+          type: string
+          format: uuid
+    patch:
+      operationId: updateUser
+      tags:
+      - User
+      summary: updateUser
+      description: Only listed mutable fields; empty/null/unknown fields rejected.
+        See contracts.md for guards. Identical metadata returns unchanged 200 without
+        audit.
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-ID:
+              description: Sanitized incoming correlation ID or generated UUID.
+              schema:
+                type: string
+                minLength: 1
+                maxLength: 64
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
+        '409':
+          $ref: '#/components/responses/409'
+        '413':
+          $ref: '#/components/responses/413'
+        '415':
+          $ref: '#/components/responses/415'
+        '422':
+          $ref: '#/components/responses/422'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+      x-permissions:
+      - user:update
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: *id001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserPatch'
+  /api/v1/assets:
+    get:
+      operationId: listAssets
+      tags:
+      - Asset
+      summary: listAssets
+      description: Fixed created_at DESC,id DESC order; page/count use one snapshot.
+        Technician work-order visibility is assigned_to=self; asset visibility is
+        EXISTS on assigned orders. Counts use identical scope.
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-ID:
+              description: Sanitized incoming correlation ID or generated UUID.
+              schema:
+                type: string
+                minLength: 1
+                maxLength: 64
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetList'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '422':
+          $ref: '#/components/responses/422'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+      x-permissions:
+      - asset:read
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100000
+          default: 1
+        description: Exact filter; combines with AND and authorization scope.
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        description: Exact filter; combines with AND and authorization scope.
+      - name: status
+        in: query
+        required: false
+        schema: &id005
+          type: string
+          enum:
+          - ACTIVE
+          - INACTIVE
+          - MAINTENANCE
+          - RETIRED
+        description: Exact filter; combines with AND and authorization scope.
+      - name: category
+        in: query
+        required: false
+        schema: &id004
+          type: string
+          minLength: 1
+          maxLength: 100
+        description: Exact filter; combines with AND and authorization scope.
+      - name: search
+        in: query
+        required: false
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description: Literal case-insensitive substring of name, code or location.
+    post:
+      operationId: createAsset
+      tags:
+      - Asset
+      summary: createAsset
+      description: See contracts.md for policy and transactional invariants.
+      responses:
+        '201':
+          description: Success
+          headers:
+            X-Request-ID:
+              description: Sanitized incoming correlation ID or generated UUID.
+              schema:
+                type: string
+                minLength: 1
+                maxLength: 64
+            Location:
+              description: Relative URL of created resource.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetResponse'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '409':
+          $ref: '#/components/responses/409'
+        '413':
+          $ref: '#/components/responses/413'
+        '415':
+          $ref: '#/components/responses/415'
+        '422':
+          $ref: '#/components/responses/422'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+      x-permissions:
+      - asset:create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetCreate'
+  /api/v1/assets/{id}:
+    get:
+      operationId: getAsset
+      tags:
+      - Asset
+      summary: getAsset
+      description: 404 when missing; 403 for existing resource outside allowed scope.
+        Technician work-order visibility is assigned_to=self; asset visibility is
+        EXISTS on assigned orders. Counts use identical scope.
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-ID:
+              description: Sanitized incoming correlation ID or generated UUID.
+              schema:
+                type: string
+                minLength: 1
+                maxLength: 64
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetResponse'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+      x-permissions:
+      - asset:read
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: *id001
+    patch:
+      operationId: updateAsset
+      tags:
+      - Asset
+      summary: updateAsset
+      description: Only listed mutable fields; empty/null/unknown fields rejected.
+        See contracts.md for guards. Identical metadata returns unchanged 200 without
+        audit.
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-ID:
+              description: Sanitized incoming correlation ID or generated UUID.
+              schema:
+                type: string
+                minLength: 1
+                maxLength: 64
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetResponse'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
+        '409':
+          $ref: '#/components/responses/409'
+        '413':
+          $ref: '#/components/responses/413'
+        '415':
+          $ref: '#/components/responses/415'
+        '422':
+          $ref: '#/components/responses/422'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+      x-permissions:
+      - asset:update
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: *id001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetPatch'
+    delete:
+      operationId: deleteAsset
+      tags:
+      - Asset
+      summary: deleteAsset
+      description: Admin only. Referenced asset gives 409 ASSET_IN_USE. Deletion and
+        audit commit atomically.
+      responses:
+        '204':
+          description: Deleted; no body.
+          headers:
+            X-Request-ID:
+              description: Sanitized incoming correlation ID or generated UUID.
+              schema:
+                type: string
+                minLength: 1
+                maxLength: 64
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
+        '409':
+          $ref: '#/components/responses/409'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+      x-permissions:
+      - asset:delete
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: *id001
+  /api/v1/work-orders:
+    get:
+      operationId: listWorkOrders
+      tags:
+      - WorkOrder
+      summary: listWorkOrders
+      description: Fixed created_at DESC,id DESC order; page/count use one snapshot.
+        Technician work-order visibility is assigned_to=self; asset visibility is
+        EXISTS on assigned orders. Counts use identical scope.
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-ID:
+              description: Sanitized incoming correlation ID or generated UUID.
+              schema:
+                type: string
+                minLength: 1
+                maxLength: 64
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkOrderList'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '422':
+          $ref: '#/components/responses/422'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+      x-permissions:
+      - work_order:read
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100000
+          default: 1
+        description: Exact filter; combines with AND and authorization scope.
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        description: Exact filter; combines with AND and authorization scope.
+      - name: status
+        in: query
+        required: false
+        schema: &id007
+          type: string
+          enum:
+          - OPEN
+          - ASSIGNED
+          - IN_PROGRESS
+          - COMPLETED
+          - CANCELLED
+        description: Exact filter; combines with AND and authorization scope.
+      - name: priority
+        in: query
+        required: false
+        schema: &id006
+          type: string
+          enum:
+          - LOW
+          - MEDIUM
+          - HIGH
+          - CRITICAL
+        description: Exact filter; combines with AND and authorization scope.
+      - name: assigned_to
+        in: query
+        required: false
+        schema: *id001
+        description: Exact filter; combines with AND and authorization scope.
+      - name: asset_id
+        in: query
+        required: false
+        schema: *id001
+        description: Exact filter; combines with AND and authorization scope.
+    post:
+      operationId: createWorkOrder
+      tags:
+      - WorkOrder
+      summary: createWorkOrder
+      description: See contracts.md for policy and transactional invariants.
+      responses:
+        '201':
+          description: Success
+          headers:
+            X-Request-ID:
+              description: Sanitized incoming correlation ID or generated UUID.
+              schema:
+                type: string
+                minLength: 1
+                maxLength: 64
+            Location:
+              description: Relative URL of created resource.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkOrderResponse'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
+        '409':
+          $ref: '#/components/responses/409'
+        '413':
+          $ref: '#/components/responses/413'
+        '415':
+          $ref: '#/components/responses/415'
+        '422':
+          $ref: '#/components/responses/422'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+      x-permissions:
+      - work_order:create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkOrderCreate'
+  /api/v1/work-orders/{id}:
+    get:
+      operationId: getWorkOrder
+      tags:
+      - WorkOrder
+      summary: getWorkOrder
+      description: 404 when missing; 403 for existing resource outside allowed scope.
+        Technician work-order visibility is assigned_to=self; asset visibility is
+        EXISTS on assigned orders. Counts use identical scope.
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-ID:
+              description: Sanitized incoming correlation ID or generated UUID.
+              schema:
+                type: string
+                minLength: 1
+                maxLength: 64
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkOrderResponse'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+      x-permissions:
+      - work_order:read
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: *id001
+    patch:
+      operationId: updateWorkOrder
+      tags:
+      - WorkOrder
+      summary: updateWorkOrder
+      description: Only listed mutable fields; empty/null/unknown fields rejected.
+        See contracts.md for guards. Identical metadata returns unchanged 200 without
+        audit.
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-ID:
+              description: Sanitized incoming correlation ID or generated UUID.
+              schema:
+                type: string
+                minLength: 1
+                maxLength: 64
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkOrderResponse'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
+        '409':
+          $ref: '#/components/responses/409'
+        '413':
+          $ref: '#/components/responses/413'
+        '415':
+          $ref: '#/components/responses/415'
+        '422':
+          $ref: '#/components/responses/422'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+      x-permissions:
+      - work_order:update
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: *id001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkOrderPatch'
+  /api/v1/work-orders/{id}/assign:
+    patch:
+      operationId: assignWorkOrder
+      tags:
+      - WorkOrder
+      summary: assignWorkOrder
+      description: OPEN→ASSIGNED or ASSIGNED reassignment to different active technician
+        only. No null unassignment. Locks and assignment/status audits are atomic.
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-ID:
+              description: Sanitized incoming correlation ID or generated UUID.
+              schema:
+                type: string
+                minLength: 1
+                maxLength: 64
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkOrderResponse'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
+        '409':
+          $ref: '#/components/responses/409'
+        '413':
+          $ref: '#/components/responses/413'
+        '415':
+          $ref: '#/components/responses/415'
+        '422':
+          $ref: '#/components/responses/422'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+      x-permissions:
+      - work_order:assign
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: *id001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Assignment'
+  /api/v1/work-orders/{id}/status:
+    patch:
+      operationId: changeWorkOrderStatus
+      tags:
+      - WorkOrder
+      summary: changeWorkOrderStatus
+      description: 'Permission selected by target: CANCELLED requires work_order:cancel;
+        other targets require work_order:status:update. Technician must own order.
+        ASSIGNED→IN_PROGRESS→COMPLETED; cancellation from any nonterminal. Others
+        409.'
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-ID:
+              description: Sanitized incoming correlation ID or generated UUID.
+              schema:
+                type: string
+                minLength: 1
+                maxLength: 64
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkOrderResponse'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
+        '409':
+          $ref: '#/components/responses/409'
+        '413':
+          $ref: '#/components/responses/413'
+        '415':
+          $ref: '#/components/responses/415'
+        '422':
+          $ref: '#/components/responses/422'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+      x-permissions:
+      - work_order:status:update
+      - work_order:cancel
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: *id001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StatusChange'
+  /api/v1/audit-logs:
+    get:
+      operationId: listAuditLogs
+      tags:
+      - Audit
+      summary: listAuditLogs
+      description: Admin/manager only. Sanitized snapshots. Stable pagination; audit
+        entity_id filter requires entity_type.
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-ID:
+              description: Sanitized incoming correlation ID or generated UUID.
+              schema:
+                type: string
+                minLength: 1
+                maxLength: 64
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditLogList'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '422':
+          $ref: '#/components/responses/422'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+      x-permissions:
+      - audit:read
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100000
+          default: 1
+        description: Exact filter; combines with AND and authorization scope.
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        description: Exact filter; combines with AND and authorization scope.
+      - name: actor_id
+        in: query
+        required: false
+        schema: *id001
+        description: Exact filter; combines with AND and authorization scope.
+      - name: action
+        in: query
+        required: false
+        schema:
+          type: string
+          enum: &id008
+          - USER_BOOTSTRAPPED
+          - USER_CREATED
+          - USER_UPDATED
+          - ASSET_CREATED
+          - ASSET_UPDATED
+          - ASSET_DELETED
+          - WORK_ORDER_CREATED
+          - WORK_ORDER_ASSIGNED
+          - WORK_ORDER_STATUS_CHANGED
+          - WORK_ORDER_UPDATED
+        description: Exact filter; combines with AND and authorization scope.
+      - name: entity_type
+        in: query
+        required: false
+        schema: &id009
+          type: string
+          enum:
+          - user
+          - asset
+          - work_order
+        description: Exact filter; combines with AND and authorization scope.
+      - name: entity_id
+        in: query
+        required: false
+        schema: *id001
+        description: Requires entity_type.
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    User:
+      type: object
+      additionalProperties: false
+      properties:
+        id: *id001
+        name: &id010
+          type: string
+          minLength: 1
+          maxLength: 100
+        email: &id011
+          type: string
+          format: email
+          minLength: 3
+          maxLength: 254
+          description: Trimmed lowercase ASCII email, no display-name form.
+        role: *id002
+        is_active:
+          type: boolean
+        created_at: &id003
+          type: string
+          format: date-time
+        updated_at: *id003
+      required:
+      - id
+      - name
+      - email
+      - role
+      - is_active
+      - created_at
+      - updated_at
+    Asset:
+      type: object
+      additionalProperties: false
+      properties:
+        id: *id001
+        asset_code:
+          type: string
+          pattern: ^[A-Z0-9][A-Z0-9_-]{0,49}$
+        name: &id013
+          type: string
+          minLength: 1
+          maxLength: 150
+        category: *id004
+        location: &id014
+          type: string
+          minLength: 1
+          maxLength: 200
+        status: *id005
+        created_at: *id003
+        updated_at: *id003
+      required:
+      - id
+      - asset_code
+      - name
+      - category
+      - location
+      - status
+      - created_at
+      - updated_at
+    WorkOrder:
+      type: object
+      additionalProperties: false
+      properties:
+        id: *id001
+        work_order_number:
+          type: string
+          pattern: ^WO-[0-9]{4}-[0-9]{6,}$
+        asset_id: *id001
+        title: &id015
+          type: string
+          minLength: 1
+          maxLength: 200
+        description: &id016
+          type: string
+          maxLength: 5000
+        priority: *id006
+        status: *id007
+        created_by: *id001
+        assigned_to:
+          type: string
+          format: uuid
+          nullable: true
+        created_at: *id003
+        updated_at: *id003
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - id
+      - work_order_number
+      - asset_id
+      - title
+      - description
+      - priority
+      - status
+      - created_by
+      - assigned_to
+      - created_at
+      - updated_at
+      - completed_at
+    AuditLog:
+      type: object
+      additionalProperties: false
+      properties:
+        id: *id001
+        actor_id:
+          type: string
+          format: uuid
+          nullable: true
+        action:
+          type: string
+          enum: *id008
+        entity_type: *id009
+        entity_id: *id001
+        old_value:
+          type: object
+          additionalProperties: true
+          nullable: true
+          description: Sanitized snapshot; no passwords, hashes or tokens.
+        new_value:
+          type: object
+          additionalProperties: true
+          nullable: true
+          description: Sanitized snapshot; no passwords, hashes or tokens.
+        request_id:
+          type: string
+          minLength: 1
+          maxLength: 64
+        created_at: *id003
+      required:
+      - id
+      - actor_id
+      - action
+      - entity_type
+      - entity_id
+      - old_value
+      - new_value
+      - request_id
+      - created_at
+    UserCreate:
+      type: object
+      additionalProperties: false
+      properties:
+        name: *id010
+        email: *id011
+        password: &id012
+          type: string
+          format: password
+          minLength: 1
+          maxLength: 72
+          writeOnly: true
+          description: 12–72 UTF-8 bytes; do not trim. Byte bound is validated by
+            service in addition to schema character length.
+        role: *id002
+      required:
+      - name
+      - email
+      - password
+      - role
+    UserPatch:
+      type: object
+      additionalProperties: false
+      properties:
+        name: *id010
+        email: *id011
+        password: *id012
+        is_active:
+          type: boolean
+      minProperties: 1
+    AssetCreate:
+      type: object
+      additionalProperties: false
+      properties:
+        asset_code:
+          type: string
+          pattern: ^[A-Z0-9][A-Z0-9_-]{0,49}$
+        name:
+          type: string
+          minLength: 1
+          maxLength: 150
+        category:
+          type: string
+          minLength: 1
+          maxLength: 100
+        location:
+          type: string
+          minLength: 1
+          maxLength: 200
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - INACTIVE
+          - MAINTENANCE
+          - RETIRED
+          default: ACTIVE
+      required:
+      - asset_code
+      - name
+      - category
+      - location
+    AssetPatch:
+      type: object
+      additionalProperties: false
+      properties:
+        name: *id013
+        category: *id004
+        location: *id014
+        status: *id005
+      minProperties: 1
+    WorkOrderCreate:
+      type: object
+      additionalProperties: false
+      properties:
+        asset_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 5000
+          default: ''
+        priority:
+          type: string
+          enum:
+          - LOW
+          - MEDIUM
+          - HIGH
+          - CRITICAL
+          default: MEDIUM
+      required:
+      - asset_id
+      - title
+    WorkOrderPatch:
+      type: object
+      additionalProperties: false
+      properties:
+        title: *id015
+        description: *id016
+        priority: *id006
+      minProperties: 1
+    Assignment:
+      type: object
+      additionalProperties: false
+      properties:
+        assigned_to: *id001
+      required:
+      - assigned_to
+    StatusChange:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          enum:
+          - IN_PROGRESS
+          - COMPLETED
+          - CANCELLED
+      required:
+      - status
+    Login:
+      type: object
+      additionalProperties: false
+      properties:
+        email: *id011
+        password:
+          type: string
+          format: password
+          minLength: 1
+          maxLength: 72
+          writeOnly: true
+          description: Nonempty, at most 72 UTF-8 bytes; unchanged input.
+      required:
+      - email
+      - password
+    LoginResult:
+      type: object
+      additionalProperties: false
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          enum:
+          - Bearer
+        expires_in:
+          type: integer
+          enum:
+          - 900
+        user:
+          $ref: '#/components/schemas/User'
+      required:
+      - access_token
+      - token_type
+      - expires_in
+      - user
+    Error:
+      type: object
+      additionalProperties: false
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object
+              additionalProperties:
+                type: string
+          required:
+          - code
+          - message
+        request_id:
+          type: string
+          minLength: 1
+          maxLength: 64
+      required:
+      - error
+      - request_id
+    PageMeta:
+      type: object
+      additionalProperties: false
+      properties:
+        page:
+          type: integer
+          minimum: 1
+          maximum: 100000
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+        total:
+          type: integer
+          format: int64
+          minimum: 0
+        total_pages:
+          type: integer
+          format: int64
+          minimum: 0
+      required:
+      - page
+      - limit
+      - total
+      - total_pages
+    UserResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/User'
+      required:
+      - data
+    AssetResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/Asset'
+      required:
+      - data
+    WorkOrderResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/WorkOrder'
+      required:
+      - data
+    AuditLogResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/AuditLog'
+      required:
+      - data
+    LoginResultResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/LoginResult'
+      required:
+      - data
+    UserList:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+      required:
+      - data
+      - meta
+    AssetList:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Asset'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+      required:
+      - data
+      - meta
+    WorkOrderList:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkOrder'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+      required:
+      - data
+      - meta
+    AuditLogList:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditLog'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+      required:
+      - data
+      - meta
+  responses:
+    '400':
+      description: INVALID_JSON
+      headers:
+        X-Request-ID:
+          description: Sanitized incoming correlation ID or generated UUID.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    '401':
+      description: UNAUTHENTICATED or INVALID_CREDENTIALS
+      headers:
+        X-Request-ID:
+          description: Sanitized incoming correlation ID or generated UUID.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+        WWW-Authenticate:
+          schema:
+            type: string
+          description: Bearer challenge on protected endpoints.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    '403':
+      description: FORBIDDEN
+      headers:
+        X-Request-ID:
+          description: Sanitized incoming correlation ID or generated UUID.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    '404':
+      description: NOT_FOUND or resource-specific *_NOT_FOUND
+      headers:
+        X-Request-ID:
+          description: Sanitized incoming correlation ID or generated UUID.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    '405':
+      description: METHOD_NOT_ALLOWED
+      headers:
+        X-Request-ID:
+          description: Sanitized incoming correlation ID or generated UUID.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+        Allow:
+          schema:
+            type: string
+          description: Allowed HTTP methods.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    '409':
+      description: Domain conflict; see contracts.md error catalogue
+      headers:
+        X-Request-ID:
+          description: Sanitized incoming correlation ID or generated UUID.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    '413':
+      description: PAYLOAD_TOO_LARGE
+      headers:
+        X-Request-ID:
+          description: Sanitized incoming correlation ID or generated UUID.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    '415':
+      description: UNSUPPORTED_MEDIA_TYPE
+      headers:
+        X-Request-ID:
+          description: Sanitized incoming correlation ID or generated UUID.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    '422':
+      description: VALIDATION_ERROR
+      headers:
+        X-Request-ID:
+          description: Sanitized incoming correlation ID or generated UUID.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    '500':
+      description: INTERNAL_ERROR
+      headers:
+        X-Request-ID:
+          description: Sanitized incoming correlation ID or generated UUID.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    '503':
+      description: SERVICE_UNAVAILABLE or WRITE_OUTCOME_UNKNOWN
+      headers:
+        X-Request-ID:
+          description: Sanitized incoming correlation ID or generated UUID.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
