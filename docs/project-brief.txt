@@ -1,0 +1,1993 @@
+# PROJECT BRIEF — GOWORK
+
+## Project Name
+GoWork
+
+## Project Type
+Production-Oriented Backend Portfolio Project
+
+## Main Goal
+Build, test, containerize, document, and deploy a real HTTP backend service using Go.
+
+This project is intended to demonstrate practical backend engineering ability, especially in:
+
+- Go
+- RESTful API
+- Raw SQL
+- PostgreSQL
+- RBAC / authorization
+- Authentication
+- Testing
+- Docker
+- CI/CD
+- Cloud deployment
+- Production-oriented backend architecture
+
+The final project must be suitable for:
+- GitHub portfolio
+- Backend Engineer job applications
+- Technical interviews
+- Demonstrating personally deployed Go HTTP service experience
+
+The project should NOT be treated as a simple tutorial CRUD project.
+
+---
+
+# 1. PRODUCT OVERVIEW
+
+GoWork is a Work Order Management backend system.
+
+The system manages:
+- users
+- roles
+- permissions
+- assets/equipment
+- work orders
+- technician assignments
+- work order lifecycle
+- audit logs
+
+Example use case:
+
+A company owns operational assets such as:
+
+- Generator A
+- Pump B
+- Excavator C
+- Truck D
+
+When an asset has an issue, a manager creates a work order.
+
+Example:
+
+Work Order:
+WO-2026-001
+
+Asset:
+Generator A
+
+Issue:
+Oil pressure warning
+
+Priority:
+HIGH
+
+Assigned Technician:
+User X
+
+Status:
+ASSIGNED
+
+The technician can then update the lifecycle:
+
+OPEN
+→ ASSIGNED
+→ IN_PROGRESS
+→ COMPLETED
+
+The system must enforce authorization rules.
+
+---
+
+# 2. USERS AND ROLES
+
+There are 3 main roles:
+
+## ADMIN
+Can:
+- create users
+- view users
+- manage roles/permissions if needed
+- create assets
+- update assets
+- delete assets
+- create work orders
+- assign technicians
+- update work orders
+- view audit logs
+
+## MANAGER
+Can:
+- view users
+- create assets
+- update assets
+- create work orders
+- assign technicians
+- view all work orders
+- update work orders
+- view audit logs
+
+Cannot:
+- delete assets
+- create admin users unless explicitly designed otherwise
+
+## TECHNICIAN
+Can:
+- view work orders assigned to themselves
+- update status of their assigned work orders
+
+Cannot:
+- create assets
+- delete assets
+- create users
+- update work orders assigned to another technician
+
+---
+
+# 3. PERMISSION MODEL
+
+Permissions should be database-driven, not fully hardcoded.
+
+Example permission codes:
+
+asset:create
+asset:read
+asset:update
+asset:delete
+
+work_order:create
+work_order:read
+work_order:update
+work_order:assign
+
+user:create
+user:read
+user:update
+
+audit:read
+
+Tables:
+
+roles
+permissions
+role_permissions
+
+Authorization should check role permissions and, where necessary, resource ownership.
+
+Example:
+
+A TECHNICIAN may have:
+
+work_order:read
+work_order:update
+
+but may only update a work order if:
+
+work_orders.assigned_to == current_user.id
+
+---
+
+# 4. TECH STACK
+
+## Language
+Go
+
+Prefer stable recent Go release.
+
+## HTTP Router
+chi v5
+
+## Database
+PostgreSQL 16 or compatible hosted PostgreSQL
+
+## Database Access
+pgx v5
+
+## SQL Code Generation
+sqlc
+
+## ORM
+DO NOT USE ORM.
+
+Do NOT use:
+- GORM
+- Prisma
+- Sequelize-like abstraction
+- any ORM equivalent
+
+Raw SQL is intentional.
+
+## Authentication
+JWT
+
+## Password Hashing
+bcrypt
+
+## Validation
+go-playground/validator or another lightweight mature validator
+
+## Logging
+Go standard library slog preferred
+
+## API Documentation
+OpenAPI
+Swagger UI
+
+## Containerization
+Docker
+Docker Compose
+
+## CI
+GitHub Actions
+
+## Production Database
+Supabase PostgreSQL is acceptable
+
+## Deployment
+Choose one practical deployment provider such as:
+- Railway
+- Render
+- Fly.io
+- VPS
+
+Prefer simplest reliable option.
+
+---
+
+# 5. SYSTEM ARCHITECTURE
+
+Target architecture:
+
+Client
+↓
+HTTP Router
+↓
+Request Middleware
+↓
+Authentication
+↓
+Authorization / RBAC
+↓
+Handler
+↓
+Service
+↓
+Repository
+↓
+sqlc
+↓
+pgx
+↓
+PostgreSQL
+
+Use clear separation of concerns.
+
+Avoid unnecessary abstraction.
+
+Do not build microservices.
+
+This project should remain a modular monolith.
+
+---
+
+# 6. RECOMMENDED FOLDER STRUCTURE
+
+Use this as baseline:
+
+gowork/
+│
+├── cmd/
+│   └── api/
+│       └── main.go
+│
+├── internal/
+│   ├── auth/
+│   │   ├── handler.go
+│   │   ├── service.go
+│   │   └── middleware.go
+│   │
+│   ├── user/
+│   │   ├── handler.go
+│   │   ├── service.go
+│   │   └── repository.go
+│   │
+│   ├── asset/
+│   │   ├── handler.go
+│   │   ├── service.go
+│   │   └── repository.go
+│   │
+│   ├── workorder/
+│   │   ├── handler.go
+│   │   ├── service.go
+│   │   └── repository.go
+│   │
+│   ├── audit/
+│   │   ├── service.go
+│   │   └── repository.go
+│   │
+│   ├── rbac/
+│   │   ├── middleware.go
+│   │   └── service.go
+│   │
+│   └── platform/
+│       ├── config/
+│       ├── database/
+│       └── http/
+│
+├── db/
+│   ├── migrations/
+│   ├── queries/
+│   └── generated/
+│
+├── docs/
+│   └── openapi.yaml
+│
+├── tests/
+│
+├── Dockerfile
+├── docker-compose.yml
+├── sqlc.yaml
+├── Makefile
+├── .env.example
+├── .gitignore
+├── go.mod
+├── go.sum
+└── README.md
+
+The final structure may be improved if there is a strong architectural reason.
+
+---
+
+# 7. DATABASE MODEL
+
+## users
+
+Fields:
+
+id
+name
+email
+password_hash
+role_id
+created_at
+updated_at
+
+Constraints:
+- email unique
+- foreign key to roles
+
+---
+
+## roles
+
+Fields:
+
+id
+name
+
+Expected role names:
+
+ADMIN
+MANAGER
+TECHNICIAN
+
+---
+
+## permissions
+
+Fields:
+
+id
+code
+description
+
+code must be unique.
+
+---
+
+## role_permissions
+
+Fields:
+
+role_id
+permission_id
+
+Composite primary key is acceptable.
+
+---
+
+## assets
+
+Fields:
+
+id
+asset_code
+name
+category
+location
+status
+created_at
+updated_at
+
+Example statuses:
+
+ACTIVE
+INACTIVE
+MAINTENANCE
+RETIRED
+
+asset_code must be unique.
+
+---
+
+## work_orders
+
+Fields:
+
+id
+work_order_number
+asset_id
+title
+description
+priority
+status
+created_by
+assigned_to
+created_at
+updated_at
+completed_at
+
+Priority values:
+
+LOW
+MEDIUM
+HIGH
+CRITICAL
+
+Status values:
+
+OPEN
+ASSIGNED
+IN_PROGRESS
+COMPLETED
+CANCELLED
+
+work_order_number must be unique.
+
+---
+
+## audit_logs
+
+Fields:
+
+id
+actor_id
+action
+entity_type
+entity_id
+old_value
+new_value
+created_at
+
+old_value and new_value may use JSONB if appropriate.
+
+---
+
+# 8. DATABASE RELATIONSHIPS
+
+users.role_id
+→ roles.id
+
+role_permissions.role_id
+→ roles.id
+
+role_permissions.permission_id
+→ permissions.id
+
+work_orders.asset_id
+→ assets.id
+
+work_orders.created_by
+→ users.id
+
+work_orders.assigned_to
+→ users.id
+
+audit_logs.actor_id
+→ users.id
+
+---
+
+# 9. MIGRATIONS
+
+Database schema must be reproducible.
+
+Use migrations.
+
+Suggested sequence:
+
+001_create_roles.sql
+002_create_permissions.sql
+003_create_role_permissions.sql
+004_create_users.sql
+005_create_assets.sql
+006_create_work_orders.sql
+007_create_audit_logs.sql
+008_add_indexes.sql
+
+Avoid manually creating the database via a hosted provider dashboard only.
+
+---
+
+# 10. SEED DATA
+
+Provide seed data for development.
+
+Roles:
+
+ADMIN
+MANAGER
+TECHNICIAN
+
+Create permissions.
+
+Create role-permission mappings.
+
+Optional demo accounts:
+
+admin@gowork.dev
+manager@gowork.dev
+technician@gowork.dev
+
+Only use documented development credentials.
+
+Never expose production secrets.
+
+---
+
+# 11. API PREFIX
+
+Use:
+
+/api/v1
+
+---
+
+# 12. HEALTH ENDPOINTS
+
+## GET /health
+
+Purpose:
+Application process is alive.
+
+Expected:
+
+{
+  "status": "ok"
+}
+
+---
+
+## GET /ready
+
+Purpose:
+Application is ready to serve requests.
+
+Should verify at least:
+- database availability
+- required configuration
+
+---
+
+# 13. AUTH API
+
+## POST /api/v1/auth/register
+
+If public registration is undesirable, restrict this endpoint or allow only admin-created users.
+
+Decision should be documented.
+
+## POST /api/v1/auth/login
+
+Input:
+
+email
+password
+
+Output:
+
+access token
+user information
+
+## GET /api/v1/auth/me
+
+Returns current authenticated user.
+
+---
+
+# 14. USERS API
+
+GET /api/v1/users
+
+GET /api/v1/users/{id}
+
+POST /api/v1/users
+
+PATCH /api/v1/users/{id}
+
+DELETE /api/v1/users/{id}
+
+Authorization must be enforced.
+
+---
+
+# 15. ASSETS API
+
+GET /api/v1/assets
+
+GET /api/v1/assets/{id}
+
+POST /api/v1/assets
+
+PATCH /api/v1/assets/{id}
+
+DELETE /api/v1/assets/{id}
+
+Support:
+
+pagination
+search
+filtering
+
+Example:
+
+GET /api/v1/assets?page=1&limit=20
+
+GET /api/v1/assets?search=generator
+
+GET /api/v1/assets?status=ACTIVE
+
+---
+
+# 16. WORK ORDERS API
+
+GET /api/v1/work-orders
+
+GET /api/v1/work-orders/{id}
+
+POST /api/v1/work-orders
+
+PATCH /api/v1/work-orders/{id}
+
+DELETE /api/v1/work-orders/{id}
+
+Assignment:
+
+PATCH /api/v1/work-orders/{id}/assign
+
+Status update:
+
+PATCH /api/v1/work-orders/{id}/status
+
+Support filtering:
+
+status
+priority
+assigned_to
+asset_id
+
+Example:
+
+GET /api/v1/work-orders?status=IN_PROGRESS
+
+GET /api/v1/work-orders?priority=HIGH
+
+---
+
+# 17. WORK ORDER BUSINESS RULES
+
+Use explicit lifecycle rules.
+
+Allowed:
+
+OPEN
+→ ASSIGNED
+
+ASSIGNED
+→ IN_PROGRESS
+
+IN_PROGRESS
+→ COMPLETED
+
+Optional:
+
+OPEN
+→ CANCELLED
+
+ASSIGNED
+→ CANCELLED
+
+IN_PROGRESS
+→ CANCELLED
+
+Invalid transitions must be rejected.
+
+Example invalid transition:
+
+OPEN
+→ COMPLETED
+
+Return:
+
+409 Conflict
+
+Example:
+
+{
+  "error": {
+    "code": "INVALID_STATUS_TRANSITION",
+    "message": "Cannot transition from OPEN to COMPLETED"
+  }
+}
+
+---
+
+# 18. ASSIGNMENT RULES
+
+Only authorized roles can assign technicians.
+
+Suggested:
+
+ADMIN
+MANAGER
+
+assigned_to should reference a user with TECHNICIAN role.
+
+Avoid assigning work orders to users who are not technicians.
+
+When assignment occurs:
+
+status may transition:
+
+OPEN
+→ ASSIGNED
+
+Audit log should record the assignment.
+
+---
+
+# 19. TECHNICIAN OWNERSHIP RULE
+
+A technician may only modify a work order if:
+
+work_orders.assigned_to == current_user.id
+
+Unauthorized access should return:
+
+403 Forbidden
+
+Test this explicitly.
+
+---
+
+# 20. AUDIT LOGGING
+
+Audit important system actions.
+
+At minimum:
+
+WORK_ORDER_CREATED
+WORK_ORDER_ASSIGNED
+WORK_ORDER_STATUS_CHANGED
+WORK_ORDER_UPDATED
+ASSET_CREATED
+ASSET_UPDATED
+ASSET_DELETED
+USER_CREATED
+USER_UPDATED
+
+Example:
+
+{
+  "actor_id": "...",
+  "action": "WORK_ORDER_STATUS_CHANGED",
+  "entity_type": "work_order",
+  "entity_id": "...",
+  "old_value": {
+    "status": "ASSIGNED"
+  },
+  "new_value": {
+    "status": "IN_PROGRESS"
+  }
+}
+
+---
+
+# 21. TRANSACTIONS
+
+Use database transactions where multiple database writes must be atomic.
+
+Example:
+
+BEGIN
+
+UPDATE work_orders
+
+INSERT audit_logs
+
+COMMIT
+
+If audit creation fails:
+
+ROLLBACK
+
+Use transaction-aware code.
+
+---
+
+# 22. SQL STRATEGY
+
+Write SQL explicitly.
+
+Example:
+
+SELECT
+    id,
+    title,
+    status,
+    assigned_to
+FROM work_orders
+WHERE id = $1;
+
+Use sqlc to generate type-safe Go functions.
+
+Queries should live in:
+
+db/queries/
+
+Examples:
+
+users.sql
+assets.sql
+work_orders.sql
+rbac.sql
+audit_logs.sql
+
+---
+
+# 23. DATABASE INDEXES
+
+Add sensible indexes.
+
+Potential indexes:
+
+users(email)
+
+assets(asset_code)
+
+work_orders(work_order_number)
+
+work_orders(status)
+
+work_orders(priority)
+
+work_orders(assigned_to)
+
+work_orders(asset_id)
+
+audit_logs(entity_type, entity_id)
+
+Do not over-index.
+
+Document reasoning.
+
+---
+
+# 24. AUTHENTICATION
+
+Use JWT.
+
+Flow:
+
+email + password
+↓
+lookup user
+↓
+bcrypt verify
+↓
+generate token
+
+Token should include minimal necessary claims.
+
+Example:
+
+sub
+role
+exp
+
+Do not include sensitive information.
+
+---
+
+# 25. AUTHORIZATION
+
+Do not trust authorization solely from JWT role claims.
+
+Authentication should identify the user.
+
+Authorization should validate permission using authoritative data.
+
+Resource-level checks must also be performed.
+
+Examples:
+
+role permission
++
+ownership check
+
+---
+
+# 26. PASSWORD SECURITY
+
+Use bcrypt.
+
+Never store plaintext passwords.
+
+Environment secrets:
+
+JWT_SECRET
+DATABASE_URL
+PORT
+APP_ENV
+
+Use:
+
+.env
+
+but commit only:
+
+.env.example
+
+Never commit secrets.
+
+---
+
+# 27. REQUEST VALIDATION
+
+Validate incoming payloads.
+
+Examples:
+
+required fields
+email format
+valid priority
+valid status
+UUID format
+pagination limits
+
+Return consistent validation errors.
+
+---
+
+# 28. ERROR RESPONSE FORMAT
+
+Use consistent error structure.
+
+Example:
+
+{
+  "error": {
+    "code": "WORK_ORDER_NOT_FOUND",
+    "message": "Work order not found"
+  }
+}
+
+Validation example:
+
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Request validation failed",
+    "details": {
+      "title": "title is required"
+    }
+  }
+}
+
+Suggested status codes:
+
+200
+201
+204
+400
+401
+403
+404
+409
+422
+500
+
+---
+
+# 29. LOGGING
+
+Use structured logging.
+
+Prefer:
+
+slog
+
+Example:
+
+{
+  "level": "INFO",
+  "request_id": "...",
+  "method": "PATCH",
+  "path": "/api/v1/work-orders/123/status",
+  "status": 200,
+  "duration_ms": 18
+}
+
+Do not use fmt.Println as the primary logging strategy.
+
+---
+
+# 30. REQUEST ID
+
+Generate or propagate:
+
+X-Request-ID
+
+Every request should have a request identifier.
+
+Attach it to logs.
+
+Useful for debugging and tracing.
+
+---
+
+# 31. CONTEXT
+
+Use context.Context correctly.
+
+Pass context through:
+
+handler
+→ service
+→ repository
+→ database
+
+Apply sensible timeout behavior where appropriate.
+
+Avoid context.Background inside request flows unless justified.
+
+---
+
+# 32. GRACEFUL SHUTDOWN
+
+Support graceful shutdown.
+
+Flow:
+
+SIGTERM / SIGINT
+↓
+stop accepting requests
+↓
+allow active requests to finish
+↓
+close database pool
+↓
+shutdown process
+
+---
+
+# 33. PAGINATION
+
+Support pagination for list endpoints.
+
+Example:
+
+?page=1&limit=20
+
+Example response:
+
+{
+  "data": [],
+  "meta": {
+    "page": 1,
+    "limit": 20,
+    "total": 72,
+    "total_pages": 4
+  }
+}
+
+Enforce maximum page size.
+
+---
+
+# 34. SEARCH
+
+Assets:
+
+GET /api/v1/assets?search=generator
+
+Use safe parameterized SQL.
+
+PostgreSQL ILIKE may be used.
+
+---
+
+# 35. TESTING STRATEGY
+
+Testing is a core requirement.
+
+Target:
+
+25–40 meaningful tests minimum.
+
+Do not write tests only for coverage percentage.
+
+Test behavior.
+
+---
+
+# 36. UNIT TESTS
+
+Test service-level business logic.
+
+Examples:
+
+TestAssignWorkOrder
+
+TestCompleteWorkOrder
+
+TestInvalidStatusTransition
+
+TestTechnicianCannotUpdateOtherTechniciansWorkOrder
+
+TestManagerCannotDeleteAsset
+
+TestAdminCanDeleteAsset
+
+---
+
+# 37. RBAC TESTS
+
+Required.
+
+Examples:
+
+TestAdminCanCreateAsset
+
+TestManagerCanCreateAsset
+
+TestTechnicianCannotCreateAsset
+
+TestAdminCanDeleteAsset
+
+TestManagerCannotDeleteAsset
+
+TestTechnicianCannotDeleteAsset
+
+---
+
+# 38. AUTH TESTS
+
+Examples:
+
+TestLoginSuccess
+
+TestLoginInvalidPassword
+
+TestUnauthenticatedRequestReturns401
+
+TestExpiredTokenReturns401
+
+TestInvalidTokenReturns401
+
+---
+
+# 39. INTEGRATION TESTS
+
+Test real HTTP behavior.
+
+Flow:
+
+HTTP request
+↓
+router
+↓
+middleware
+↓
+handler
+↓
+service
+↓
+repository
+↓
+test PostgreSQL
+↓
+HTTP response
+
+Prefer isolated test database.
+
+---
+
+# 40. DOCKER
+
+Provide production-capable Dockerfile.
+
+Prefer multi-stage build.
+
+Concept:
+
+builder image
+↓
+go build
+↓
+runtime image
+↓
+compiled binary
+
+Keep runtime image reasonably small.
+
+---
+
+# 41. DOCKER COMPOSE
+
+Local development should support:
+
+docker compose up
+
+Services:
+
+api
+postgres
+
+Optional:
+migration runner
+
+The project should be easy for another developer to run locally.
+
+---
+
+# 42. MAKEFILE
+
+Provide convenient commands.
+
+Examples:
+
+make run
+
+make test
+
+make build
+
+make migrate-up
+
+make migrate-down
+
+make sqlc
+
+make lint
+
+make docker-up
+
+make docker-down
+
+---
+
+# 43. CI PIPELINE
+
+Use GitHub Actions.
+
+On pull request and/or push:
+
+go fmt check
+↓
+go vet
+↓
+go test
+↓
+go build
+↓
+Docker build
+
+CI must fail if tests fail.
+
+---
+
+# 44. DEPLOYMENT
+
+Deploy the API publicly.
+
+The final project must have a real HTTPS endpoint.
+
+Example:
+
+https://gowork-api.example.com
+
+At minimum:
+
+GET /health
+
+must be publicly accessible.
+
+Production database should be separate from local development database.
+
+---
+
+# 45. API DOCUMENTATION
+
+Use OpenAPI.
+
+Provide Swagger UI.
+
+Ideal:
+
+GET /docs
+
+Swagger must document:
+
+authentication
+users
+assets
+work orders
+audit endpoints
+request bodies
+responses
+error codes
+
+---
+
+# 46. README REQUIREMENTS
+
+README must include:
+
+Project Overview
+
+Problem Statement
+
+Features
+
+Architecture
+
+Tech Stack
+
+Database Schema
+
+Authorization Model
+
+API Documentation
+
+Local Development
+
+Environment Variables
+
+Database Migrations
+
+Testing
+
+Docker
+
+CI/CD
+
+Deployment
+
+Design Decisions
+
+Future Improvements
+
+---
+
+# 47. ARCHITECTURE DIAGRAM
+
+README should include architecture diagram.
+
+Example:
+
+CLIENT
+↓
+REST API
+↓
+chi Router
+↓
+JWT Middleware
+↓
+RBAC Middleware
+↓
+Handler
+↓
+Service
+↓
+Repository
+↓
+sqlc
+↓
+pgx
+↓
+PostgreSQL
+
+---
+
+# 48. ERD
+
+Provide an ERD for:
+
+users
+roles
+permissions
+role_permissions
+assets
+work_orders
+audit_logs
+
+ERD should be stored in docs or README.
+
+---
+
+# 49. DESIGN DECISIONS
+
+Document important decisions.
+
+Examples:
+
+Why Go?
+
+Why chi?
+
+Why raw SQL?
+
+Why sqlc?
+
+Why pgx?
+
+Why layered architecture?
+
+Why database-driven RBAC?
+
+Why modular monolith instead of microservices?
+
+Why JWT?
+
+Why PostgreSQL?
+
+The goal is to demonstrate reasoning, not only implementation.
+
+---
+
+# 50. OUT OF SCOPE FOR V1
+
+DO NOT implement unless V1 is fully complete.
+
+No frontend dashboard.
+
+No mobile app.
+
+No microservices.
+
+No Kubernetes.
+
+No Kafka.
+
+No Redis unless later justified.
+
+No AI.
+
+No payment.
+
+No WebSocket.
+
+No file uploads.
+
+No complex event architecture.
+
+No unnecessary abstraction.
+
+---
+
+# 51. OPTIONAL V2
+
+Only after V1 completion.
+
+Possible improvements:
+
+Redis caching
+
+Rate limiting
+
+Refresh token flow
+
+Background jobs
+
+Prometheus metrics
+
+Webhook support
+
+Email notifications
+
+Asset maintenance schedule
+
+Work order comments
+
+Attachments
+
+Advanced search
+
+Soft delete
+
+Event-based audit system
+
+---
+
+# 52. NON-FUNCTIONAL REQUIREMENTS
+
+The backend should be:
+
+Readable
+
+Testable
+
+Maintainable
+
+Secure by default
+
+Reasonably performant
+
+Observable through logs
+
+Easy to run locally
+
+Easy to deploy
+
+Easy for reviewers to understand
+
+---
+
+# 53. CODE QUALITY RULES
+
+Prefer simple Go.
+
+Avoid Java-style over-engineering.
+
+Avoid excessive interfaces.
+
+Only introduce interfaces where they improve testability or architecture.
+
+Return and handle errors explicitly.
+
+Do not swallow errors.
+
+Use dependency injection manually where appropriate.
+
+Avoid global mutable state.
+
+Use idiomatic Go naming.
+
+Keep functions reasonably small.
+
+Avoid unnecessary package fragmentation.
+
+Use comments for reasoning, not obvious code narration.
+
+---
+
+# 54. SECURITY RULES
+
+Never commit secrets.
+
+Use parameterized SQL.
+
+Hash passwords.
+
+Validate JWT.
+
+Validate input.
+
+Enforce authorization server-side.
+
+Use least privilege.
+
+Do not leak internal errors to clients.
+
+Log security-relevant failures carefully without logging secrets.
+
+Do not return password hashes.
+
+Use reasonable HTTP timeouts.
+
+---
+
+# 55. DELIVERY MILESTONES
+
+## MILESTONE 0 — Planning
+
+Deliver:
+
+final architecture
+folder structure
+ERD
+database schema
+API contract
+permission matrix
+development plan
+
+Do not begin feature implementation before these are reasonably stable.
+
+---
+
+## MILESTONE 1 — Go Foundation
+
+Deliver:
+
+Go module
+main.go
+configuration
+HTTP server
+chi router
+structured logging
+request ID
+health endpoint
+graceful shutdown
+
+Definition:
+
+GET /health works locally.
+
+---
+
+## MILESTONE 2 — Database Foundation
+
+Deliver:
+
+PostgreSQL
+migrations
+roles
+permissions
+users
+assets
+work_orders
+audit_logs
+indexes
+seed data
+pgx connection pool
+sqlc setup
+
+Definition:
+
+migrations run successfully and sqlc generates code.
+
+---
+
+## MILESTONE 3 — Authentication
+
+Deliver:
+
+password hashing
+login
+JWT
+authentication middleware
+GET /auth/me
+
+Tests required.
+
+---
+
+## MILESTONE 4 — RBAC
+
+Deliver:
+
+role permissions
+permission checking
+authorization middleware/service
+resource ownership logic
+
+Tests required.
+
+---
+
+## MILESTONE 5 — Asset Module
+
+Deliver:
+
+create asset
+list assets
+get asset
+update asset
+delete asset
+pagination
+search
+filters
+authorization
+
+Tests required.
+
+---
+
+## MILESTONE 6 — Work Order Module
+
+Deliver:
+
+create work order
+list work orders
+get work order
+update work order
+assign technician
+status transitions
+filtering
+ownership checks
+
+Tests required.
+
+---
+
+## MILESTONE 7 — Audit System
+
+Deliver:
+
+audit logs
+transactional writes
+audit read endpoint
+authorization
+
+Tests required.
+
+---
+
+## MILESTONE 8 — Testing Hardening
+
+Deliver:
+
+unit tests
+RBAC tests
+auth tests
+integration tests
+
+Target:
+25–40 meaningful tests minimum.
+
+---
+
+## MILESTONE 9 — Docker
+
+Deliver:
+
+Dockerfile
+docker-compose.yml
+local PostgreSQL
+easy local startup
+
+Definition:
+
+docker compose up
+
+should start the application successfully.
+
+---
+
+## MILESTONE 10 — CI
+
+Deliver:
+
+GitHub Actions
+
+Pipeline:
+
+format
+vet
+test
+build
+Docker build
+
+---
+
+## MILESTONE 11 — API Documentation
+
+Deliver:
+
+OpenAPI
+Swagger UI
+endpoint descriptions
+auth documentation
+examples
+error responses
+
+---
+
+## MILESTONE 12 — Production Deployment
+
+Deliver:
+
+public API URL
+production database
+environment configuration
+HTTPS
+health check
+
+Definition:
+
+GET /health works over public internet.
+
+---
+
+## MILESTONE 13 — Portfolio Polish
+
+Deliver:
+
+professional README
+architecture diagram
+ERD
+design decision section
+deployment URL
+Swagger URL
+GitHub repository cleanup
+
+---
+
+# 56. DEFINITION OF DONE
+
+The project is only complete when all of the following are true:
+
+- Go backend exists
+- chi router used
+- PostgreSQL used
+- pgx used
+- sqlc used
+- no ORM used
+- raw SQL implemented
+- authentication implemented
+- bcrypt password hashing implemented
+- JWT implemented
+- RBAC implemented
+- resource ownership authorization implemented
+- assets implemented
+- work orders implemented
+- status lifecycle implemented
+- audit logging implemented
+- database transactions implemented
+- migrations implemented
+- seed data implemented
+- pagination implemented
+- filtering implemented
+- search implemented
+- structured logging implemented
+- request IDs implemented
+- context propagated properly
+- graceful shutdown implemented
+- unit tests implemented
+- integration tests implemented
+- RBAC tests implemented
+- Docker implemented
+- Docker Compose implemented
+- GitHub Actions implemented
+- OpenAPI implemented
+- Swagger available
+- README complete
+- ERD complete
+- architecture diagram complete
+- .env.example included
+- secrets excluded
+- public HTTPS deployment exists
+- GET /health publicly accessible
+- repository is clean and portfolio-ready
+
+---
+
+# 57. PORTFOLIO OUTPUT
+
+Final GitHub project should communicate:
+
+"Built and deployed a production-oriented Work Order Management REST API in Go using chi, pgx, sqlc, raw PostgreSQL, JWT authentication, database-backed RBAC, transactional audit logging, automated testing, Docker, and CI/CD."
+
+Suggested resume bullets:
+
+- Built and deployed a production-oriented REST API in Go using chi, pgx, sqlc, and PostgreSQL, implementing JWT authentication, database-backed RBAC, work-order lifecycle management, and transactional audit logging.
+
+- Designed explicit raw SQL queries and database migrations without an ORM, using sqlc for type-safe data access and PostgreSQL transactions for consistency.
+
+- Developed automated unit, authorization, and integration tests, containerized the service with Docker, and implemented GitHub Actions CI for test and build validation.
+
+- Deployed the HTTP service to cloud infrastructure and documented its API through OpenAPI/Swagger.
+
+---
+
+# 58. IMPORTANT PROJECT PHILOSOPHY
+
+This project should optimize for:
+
+DEPTH > FEATURE COUNT
+
+The purpose is not to create many endpoints.
+
+The purpose is to demonstrate that the developer understands:
+
+HTTP
+
+Go
+
+SQL
+
+PostgreSQL
+
+authorization
+
+database transactions
+
+testing
+
+deployment
+
+CI
+
+production backend thinking
+
+Do not inflate the project with unnecessary technologies.
+
+---
+
+# 59. HOW CHATGPT WORK SHOULD EXECUTE THIS PROJECT
+
+Act as a senior backend engineer and implementation partner.
+
+Do not immediately generate the entire codebase at once.
+
+Work milestone-by-milestone.
+
+For every milestone:
+
+1. inspect the current repository state
+2. explain what will be implemented
+3. identify dependencies
+4. implement the smallest complete vertical slice
+5. run or validate tests
+6. fix errors
+7. summarize what changed
+8. update documentation when necessary
+9. only then continue to the next milestone
+
+Do not skip verification.
+
+Do not claim something works unless it has been tested or otherwise verified.
+
+When making architectural changes, explain the tradeoff briefly.
+
+Prefer idiomatic Go over clever abstractions.
+
+Avoid overengineering.
+
+---
+
+# 60. FIRST TASK FOR WORK MODE
+
+Start with MILESTONE 0 only.
+
+Do not write application feature code yet.
+
+Produce:
+
+1. final project architecture
+2. final folder structure
+3. complete ERD
+4. complete PostgreSQL schema plan
+5. role-permission matrix
+6. API contract
+7. error model
+8. status transition rules
+9. environment variable plan
+10. testing strategy
+11. deployment strategy
+12. milestone execution checklist
+
+Point out any architectural weaknesses in this brief and improve them before implementation.
+
+After the plan is approved, proceed to MILESTONE 1.
