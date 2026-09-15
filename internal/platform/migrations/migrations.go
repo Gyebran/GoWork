@@ -10,6 +10,7 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/pgx/v5"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/jackc/pgx/v5"
 )
 
 func Open(dsn, directory string) (*migrate.Migrate, error) {
@@ -42,6 +43,10 @@ func ValidateTestURL(dsn, environment string) error {
 	u, err := url.Parse(dsn)
 	if err != nil || (u.Scheme != "postgres" && u.Scheme != "postgresql") || u.Hostname() == "" || !strings.HasSuffix(u.Path, "_test") {
 		return errors.New("TEST_DATABASE_URL must explicitly target a disposable database ending in _test")
+	}
+	parsed, err := pgx.ParseConfig(dsn)
+	if err != nil || parsed.Database != strings.TrimPrefix(u.Path, "/") {
+		return errors.New("test database name cannot be overridden by connection options")
 	}
 	return nil
 }

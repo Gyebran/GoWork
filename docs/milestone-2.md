@@ -1,6 +1,6 @@
 # Milestone 2 — database foundation
 
-Implementation prepared 2026-09-15. Final PostgreSQL verification is recorded below when the database workflow completes.
+Completed 2026-09-15. PostgreSQL verification passed in GitHub Actions.
 
 ## Delivered
 
@@ -47,4 +47,10 @@ Checks: formatting/vet/race unit tests/build; reproducible sqlc generation; real
 
 ## Verification result
 
-Pending workflow execution. This file must not be treated as evidence of a passing database run until updated with the run URL and result.
+[Database foundation run 34933681813](https://github.com/Gyebran/GoWork/actions/runs/34933681813) passed on commit `5af5a858d44244fc24e6269e7b1e47d3afff8e1c`. All job steps succeeded, including make check, reproducible sqlc generation, and make test-integration against PostgreSQL 16.10.
+
+After that run, a narrowly scoped test-database guard was strengthened to reject connection options that override the `_test` database name; its regression test passed locally. No migration, query, pool, transaction, or readiness behavior changed afterward.
+
+Local live-process checks also passed: `/health` returned 200 while a deliberately unavailable database caused `/ready` to return 503; SIGTERM exited cleanly. API and migration binaries built successfully. Native local PostgreSQL/Compose startup could not be exercised in this workspace; the real PostgreSQL tests above ran in the isolated GitHub runner.
+
+Milestone 2 is complete. M3 (authentication/bootstrap/audit writer) has not started.

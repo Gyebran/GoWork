@@ -224,7 +224,7 @@ func TestTestDatabaseGuard(t *testing.T) {
 	for _, tt := range []struct {
 		dsn, env string
 		ok       bool
-	}{{"postgres://localhost/gowork_test", "test", true}, {"postgres://localhost/gowork", "test", false}, {"postgres://localhost/gowork_test", "production", false}, {"", "test", false}} {
+	}{{"postgres://localhost/gowork_test", "test", true}, {"postgres://localhost/gowork", "test", false}, {"postgres://localhost/gowork_test", "production", false}, {"", "test", false}, {"postgres://localhost/gowork_test?database=production", "test", false}} {
 		if err := migrations.ValidateTestURL(tt.dsn, tt.env); (err == nil) != tt.ok {
 			t.Fatalf("unexpected guard result %v", err)
 		}
