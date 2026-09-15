@@ -25,7 +25,13 @@ func TestConfiguration(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c, err := load(func(key string) (string, bool) { v, ok := tt.env[key]; return v, ok })
+			c, err := load(func(key string) (string, bool) {
+				v, ok := tt.env[key]
+				if key == "DATABASE_URL" && !ok {
+					return "postgres://localhost/gowork?sslmode=verify-full", true
+				}
+				return v, ok
+			})
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("config=%+v err=%v", c, err)
 			}

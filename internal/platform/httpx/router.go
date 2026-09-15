@@ -11,7 +11,7 @@ import (
 
 const RequestTimeout = 10 * time.Second
 
-func NewRouter(logger *slog.Logger) http.Handler {
+func NewRouter(logger *slog.Logger, readiness ...*Readiness) http.Handler {
 	r := chi.NewRouter()
 	r.Use(requestIDs, accessLog(logger), recoverPanic(logger))
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
@@ -32,5 +32,8 @@ func NewRouter(logger *slog.Logger) http.Handler {
 			Status string `json:"status"`
 		}{Status: "ok"})
 	})))
+	if len(readiness) > 0 {
+		r.Method("GET", "/ready", requestTimeout(RequestTimeout)(readiness[0]))
+	}
 	return r
 }

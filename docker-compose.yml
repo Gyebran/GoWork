@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:16.10
+    environment:
+      POSTGRES_USER: gowork_owner
+      POSTGRES_PASSWORD: gowork_local_only
+      POSTGRES_DB: gowork
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/local/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U gowork_owner -d gowork"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+volumes:
+  postgres_data:

@@ -1,0 +1,12 @@
+CREATE INDEX users_role_idx ON users(role_id);
+CREATE INDEX users_list_idx ON users(created_at DESC,id DESC);
+CREATE INDEX assets_list_idx ON assets(created_at DESC,id DESC);
+CREATE INDEX work_orders_list_idx ON work_orders(created_at DESC,id DESC);
+CREATE INDEX work_orders_assignee_idx ON work_orders(assigned_to,created_at DESC,id DESC);
+CREATE INDEX work_orders_asset_status_idx ON work_orders(asset_id,status);
+CREATE INDEX work_orders_status_list_idx ON work_orders(status,created_at DESC,id DESC);
+CREATE INDEX work_orders_creator_idx ON work_orders(created_by);
+CREATE INDEX audit_entity_idx ON audit_logs(entity_type,entity_id,created_at DESC,id DESC);
+CREATE INDEX audit_list_idx ON audit_logs(created_at DESC,id DESC);
+CREATE INDEX audit_actor_idx ON audit_logs(actor_id);
+CREATE INDEX role_permissions_permission_idx ON role_permissions(permission_id);

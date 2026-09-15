@@ -1,0 +1,12 @@
+DROP INDEX role_permissions_permission_idx;
+DROP INDEX audit_actor_idx;
+DROP INDEX audit_list_idx;
+DROP INDEX audit_entity_idx;
+DROP INDEX work_orders_creator_idx;
+DROP INDEX work_orders_status_list_idx;
+DROP INDEX work_orders_asset_status_idx;
+DROP INDEX work_orders_assignee_idx;
+DROP INDEX work_orders_list_idx;
+DROP INDEX assets_list_idx;
+DROP INDEX users_list_idx;
+DROP INDEX users_role_idx;

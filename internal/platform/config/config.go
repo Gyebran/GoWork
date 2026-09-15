@@ -2,12 +2,15 @@ package config
 
 import (
 	"fmt"
+	"github.com/Gyebran/GoWork/internal/platform/database"
 	"log/slog"
 	"os"
 	"strconv"
 )
 
 type Config struct {
+	DatabaseURL string
+	DBMaxConns  int32
 	Environment string
 	Port        int
 	LogLevel    slog.Level
@@ -50,6 +53,15 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 		c.LogLevel = slog.LevelError
 	default:
 		return Config{}, fmt.Errorf("LOG_LEVEL must be DEBUG, INFO, WARN or ERROR")
+	}
+	c.DatabaseURL = value("DATABASE_URL", "")
+	max, err := strconv.Atoi(value("DB_MAX_CONNS", "10"))
+	if err != nil || max < 1 || max > 50 {
+		return Config{}, fmt.Errorf("DB_MAX_CONNS must be between 1 and 50")
+	}
+	c.DBMaxConns = int32(max)
+	if _, err := database.ParseConfig(c.DatabaseURL, c.DBMaxConns, c.Environment == "production"); err != nil {
+		return Config{}, err
 	}
 	return c, nil
 }

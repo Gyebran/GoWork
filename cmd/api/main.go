@@ -10,6 +10,7 @@ import (
 	"syscall"
 
 	"github.com/Gyebran/GoWork/internal/platform/config"
+	"github.com/Gyebran/GoWork/internal/platform/database"
 	"github.com/Gyebran/GoWork/internal/platform/httpx"
 )
 
@@ -24,7 +25,15 @@ func run() int {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: cfg.LogLevel}))
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	server := httpx.NewServer(net.JoinHostPort("0.0.0.0", strconv.Itoa(cfg.Port)), httpx.NewRouter(logger), logger)
+	pool, err := database.Open(context.Background(), cfg.DatabaseURL, cfg.DBMaxConns, cfg.Environment == "production")
+	if err != nil {
+		logger.Error("database_initialization_failed")
+		return 1
+	}
+	defer pool.Close()
+	readiness := httpx.NewReadiness(func(ctx context.Context) error { return database.Ready(ctx, pool) })
+	go func() { <-ctx.Done(); readiness.Stop() }()
+	server := httpx.NewServer(net.JoinHostPort("0.0.0.0", strconv.Itoa(cfg.Port)), httpx.NewRouter(logger, readiness), logger)
 	ln, err := net.Listen("tcp", server.Addr)
 	if err != nil {
 		logger.Error("listen_failed", "error", err.Error())
