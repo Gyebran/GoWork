@@ -1,6 +1,6 @@
 # Milestone 3 — authentication
 
-Implementation in progress on 2026-09-19. Verification evidence will be added after tests complete.
+Completed and verified on 2026-09-19. Milestone 4 remains unstarted.
 
 ## Delivered scope
 
@@ -56,7 +56,11 @@ The response includes data.access_token, token_type, expires_in and a sanitized 
 
 Required checks: formatting, vet, race tests, API/bootstrap/seed builds, reproducible sqlc, token rejection cases, JSON validation, password bounds, missing/inactive account handling, real HTTP-to-PostgreSQL login/me, simultaneous bootstrap, audit-failure rollback, audit sanitization and demo seed idempotency. Tests run against the same PostgreSQL 16 workflow used in M2 because this workspace does not provide native PostgreSQL/Docker.
 
-Evidence pending. No public deployment is claimed.
+Local `make check` passed with Go 1.27.1 (formatting, vet, race tests and all three binaries). The integration suite compiles and its test-database guard passes locally. A single bcrypt-cost-12 hash benchmark measured about 243 ms on this workspace; this is a development observation, not a production latency guarantee.
+
+[GitHub Actions verification run 35434754201](https://github.com/Gyebran/GoWork/actions/runs/35434754201) passed the required checks on implementation commit `4dc84aea94ed983f2a54e9afb612d580f5107690`: `make check`, reproducible `make sqlc`, and `make test-integration` on PostgreSQL 16.10. The integration suite exercises migrations up/down/up, database guards and permissions, actual HTTP login/me, disabled-account rejection, current-role lookup, simultaneous bootstrap (one success), forced-audit rollback, sanitized audit snapshots and repeatable demo seed. The following completion commit changes documentation only.
+
+No public deployment is claimed.
 
 ## References
 
