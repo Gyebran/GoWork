@@ -9,8 +9,10 @@ import (
 	"strconv"
 	"syscall"
 
+	"github.com/Gyebran/GoWork/internal/auth"
 	"github.com/Gyebran/GoWork/internal/platform/config"
 	"github.com/Gyebran/GoWork/internal/platform/database"
+	dbsql "github.com/Gyebran/GoWork/internal/platform/database/sqlc"
 	"github.com/Gyebran/GoWork/internal/platform/httpx"
 )
 
@@ -33,7 +35,18 @@ func run() int {
 	defer pool.Close()
 	readiness := httpx.NewReadiness(func(ctx context.Context) error { return database.Ready(ctx, pool) })
 	go func() { <-ctx.Done(); readiness.Stop() }()
-	server := httpx.NewServer(net.JoinHostPort("0.0.0.0", strconv.Itoa(cfg.Port)), httpx.NewRouter(logger, readiness), logger)
+	tokens, err := auth.NewTokens(cfg.JWTSecret, cfg.JWTIssuer, cfg.JWTAudience)
+	if err != nil {
+		logger.Error("invalid token configuration")
+		return 1
+	}
+	authService, err := auth.NewService(dbsql.New(pool), tokens)
+	if err != nil {
+		logger.Error("authentication initialization failed")
+		return 1
+	}
+	handlers := auth.NewHandler(authService, logger)
+	server := httpx.NewServer(net.JoinHostPort("0.0.0.0", strconv.Itoa(cfg.Port)), httpx.NewRouterWithRoutes(logger, readiness, handlers.Register), logger)
 	ln, err := net.Listen("tcp", server.Addr)
 	if err != nil {
 		logger.Error("listen_failed", "error", err.Error())

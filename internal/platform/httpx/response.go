@@ -14,7 +14,7 @@ type apiError struct {
 	Message string `json:"message"`
 }
 
-func writeJSON(w http.ResponseWriter, status int, v any) {
+func WriteJSON(w http.ResponseWriter, status int, v any) {
 	// Encode before committing headers so encoding failure cannot produce partial JSON.
 	body, err := json.Marshal(v)
 	if err != nil {
@@ -26,6 +26,6 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	_, _ = w.Write(append(body, '\n'))
 }
 
-func writeError(w http.ResponseWriter, r *http.Request, status int, code, message string) {
-	writeJSON(w, status, errorBody{Error: apiError{Code: code, Message: message}, RequestID: RequestID(r.Context())})
+func WriteError(w http.ResponseWriter, r *http.Request, status int, code, message string) {
+	WriteJSON(w, status, errorBody{Error: apiError{Code: code, Message: message}, RequestID: RequestID(r.Context())})
 }

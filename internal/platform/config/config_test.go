@@ -27,6 +27,9 @@ func TestConfiguration(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c, err := load(func(key string) (string, bool) {
 				v, ok := tt.env[key]
+				if key == "JWT_SECRET" && !ok {
+					return "01234567890123456789012345678901ab", true
+				}
 				if key == "DATABASE_URL" && !ok {
 					return "postgres://localhost/gowork?sslmode=verify-full", true
 				}

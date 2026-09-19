@@ -26,7 +26,7 @@ func TestDatabaseFoundation(t *testing.T) {
 	if err := migrations.ValidateTestURL(dsn, os.Getenv("APP_ENV")); err != nil {
 		t.Fatal(err)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
 	defer cancel()
 	pool, err := database.Open(ctx, dsn, 5, false)
 	if err != nil {
@@ -218,6 +218,8 @@ func TestDatabaseFoundation(t *testing.T) {
 			t.Fatal("cancelled write persisted")
 		}
 	})
+	t.Run("authentication and bootstrap", func(t *testing.T) { authIntegration(t, ctx, pool) })
+
 }
 
 func TestTestDatabaseGuard(t *testing.T) {

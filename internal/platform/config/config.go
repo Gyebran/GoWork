@@ -9,6 +9,9 @@ import (
 )
 
 type Config struct {
+	JWTSecret   string
+	JWTIssuer   string
+	JWTAudience string
 	DatabaseURL string
 	DBMaxConns  int32
 	Environment string
@@ -62,6 +65,12 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 	c.DBMaxConns = int32(max)
 	if _, err := database.ParseConfig(c.DatabaseURL, c.DBMaxConns, c.Environment == "production"); err != nil {
 		return Config{}, err
+	}
+	c.JWTSecret = value("JWT_SECRET", "")
+	c.JWTIssuer = value("JWT_ISSUER", "gowork")
+	c.JWTAudience = value("JWT_AUDIENCE", "gowork-api")
+	if len(c.JWTSecret) < 32 || c.JWTIssuer == "" || c.JWTAudience == "" {
+		return Config{}, fmt.Errorf("JWT_SECRET requires at least 32 bytes; issuer and audience must be nonempty")
 	}
 	return c, nil
 }

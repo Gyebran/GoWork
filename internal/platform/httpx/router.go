@@ -12,10 +12,20 @@ import (
 const RequestTimeout = 10 * time.Second
 
 func NewRouter(logger *slog.Logger, readiness ...*Readiness) http.Handler {
+	var ready *Readiness
+	if len(readiness) > 0 {
+		ready = readiness[0]
+	}
+	return NewRouterWithRoutes(logger, ready, nil)
+}
+
+func Endpoint(handler http.Handler) http.Handler { return requestTimeout(RequestTimeout)(handler) }
+
+func NewRouterWithRoutes(logger *slog.Logger, ready *Readiness, register func(chi.Router)) http.Handler {
 	r := chi.NewRouter()
 	r.Use(requestIDs, accessLog(logger), recoverPanic(logger))
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
-		writeError(w, r, 404, "NOT_FOUND", "Route not found")
+		WriteError(w, r, 404, "NOT_FOUND", "Route not found")
 	})
 	r.MethodNotAllowed(func(w http.ResponseWriter, req *http.Request) {
 		var allowed []string
@@ -25,15 +35,18 @@ func NewRouter(logger *slog.Logger, readiness ...*Readiness) http.Handler {
 			}
 		}
 		w.Header().Set("Allow", strings.Join(allowed, ", "))
-		writeError(w, req, 405, "METHOD_NOT_ALLOWED", "Method not allowed")
+		WriteError(w, req, 405, "METHOD_NOT_ALLOWED", "Method not allowed")
 	})
 	r.Method("GET", "/health", requestTimeout(RequestTimeout)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, 200, struct {
+		WriteJSON(w, 200, struct {
 			Status string `json:"status"`
 		}{Status: "ok"})
 	})))
-	if len(readiness) > 0 {
-		r.Method("GET", "/ready", requestTimeout(RequestTimeout)(readiness[0]))
+	if ready != nil {
+		r.Method("GET", "/ready", requestTimeout(RequestTimeout)(ready))
+	}
+	if register != nil {
+		register(r)
 	}
 	return r
 }

@@ -5,12 +5,14 @@ run:
 	$(GO) run ./cmd/api
 build:
 	$(GO) build -trimpath -o bin/gowork-api ./cmd/api
+	$(GO) build -trimpath -o bin/gowork-bootstrap ./cmd/bootstrap
+	$(GO) build -trimpath -o bin/gowork-seed ./cmd/seed
 test:
 	$(GO) test -race ./...
 fmt:
 	$(GO) fmt ./...
 fmt-check:
-	@test -z "$$(gofmt -l cmd internal)" || (gofmt -l cmd internal; exit 1)
+	@test -z "$$(gofmt -l cmd internal tests)" || (gofmt -l cmd internal tests; exit 1)
 vet:
 	$(GO) vet ./...
 check: fmt-check vet test build
@@ -30,3 +32,9 @@ db-down:
 	docker compose down
 db-grants:
 	docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U gowork_owner -d gowork < db/local/grants.sql
+
+.PHONY: bootstrap seed-demo
+bootstrap:
+	$(GO) run ./cmd/bootstrap
+seed-demo:
+	$(GO) run ./cmd/seed

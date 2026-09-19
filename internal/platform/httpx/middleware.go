@@ -70,7 +70,7 @@ func recoverPanic(logger *slog.Logger) func(http.Handler) http.Handler {
 					}
 					// Panic values may contain credentials. Keep them out of operational logs.
 					logger.ErrorContext(r.Context(), "request_panic", "request_id", RequestID(r.Context()))
-					writeError(w, r, 500, "INTERNAL_ERROR", "An internal error occurred")
+					WriteError(w, r, 500, "INTERNAL_ERROR", "An internal error occurred")
 				}
 			}()
 			next.ServeHTTP(w, r)
