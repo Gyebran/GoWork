@@ -1,6 +1,6 @@
 # Milestone 4 — RBAC and user management
 
-Implementation prepared on 2026-09-20; verification pending.
+Completed and verified on 2026-09-20.
 
 ## Delivered scope
 
@@ -33,4 +33,6 @@ Use the M2 database setup and M3 JWT/bootstrap setup. No new environment variabl
 
 Required: formatting/vet/build, race unit tests, reproducible sqlc, PostgreSQL integration for permission matrix and live revocation, current account state, create/conflict/input validation, filtered pagination, no-op audit behavior, password audit sanitization, forced create/update audit rollback, concurrent administrator deactivations, and assignment/deactivation locking.
 
-Evidence pending. No public deployment is claimed. M5 asset features have not started.
+Local `make check` passed with Go 1.27.1; the integration suite also compiles and its test-database guard passes locally. [GitHub Actions run 35512700574](https://github.com/Gyebran/GoWork/actions/runs/35512700574) passed `make check`, reproducible sqlc generation and the complete PostgreSQL 16.10 integration suite on implementation commit `f9e1a6fe80d4cdc75f098dfeb575c6023def3b44`. Tests include earlier M2/M3 checks plus the M4 cases listed above. The completion commit changes documentation only.
+
+No public deployment is claimed. M5 asset features have not started.
