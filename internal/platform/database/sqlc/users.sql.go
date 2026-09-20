@@ -11,6 +11,35 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countActiveAdmins = `-- name: CountActiveAdmins :one
+SELECT count(*) FROM users u JOIN roles r ON r.id=u.role_id WHERE u.is_active AND r.name='ADMIN'
+`
+
+func (q *Queries) CountActiveAdmins(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countActiveAdmins)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countUsers = `-- name: CountUsers :one
+SELECT count(*) FROM users u JOIN roles r ON r.id=u.role_id
+WHERE ($1::text='' OR r.name=$1::text)
+AND ($2::boolean IS NULL OR u.is_active=$2::boolean)
+`
+
+type CountUsersParams struct {
+	RoleFilter   string
+	ActiveFilter pgtype.Bool
+}
+
+func (q *Queries) CountUsers(ctx context.Context, arg CountUsersParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countUsers, arg.RoleFilter, arg.ActiveFilter)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const getCurrentUser = `-- name: GetCurrentUser :one
 SELECT u.id, u.name, u.email, u.password_hash, u.role_id, u.is_active, u.created_at, u.updated_at, r.name AS role FROM users u JOIN roles r ON r.id=u.role_id WHERE u.id=$1
 `
@@ -121,6 +150,87 @@ func (q *Queries) InsertUser(ctx context.Context, arg InsertUserParams) (User, e
 	return i, err
 }
 
+const listUsers = `-- name: ListUsers :many
+SELECT u.id, u.name, u.email, u.password_hash, u.role_id, u.is_active, u.created_at, u.updated_at,r.name AS role FROM users u JOIN roles r ON r.id=u.role_id
+WHERE ($1::text='' OR r.name=$1::text)
+AND ($2::boolean IS NULL OR u.is_active=$2::boolean)
+ORDER BY u.created_at DESC,u.id DESC LIMIT $4::int OFFSET $3::int
+`
+
+type ListUsersParams struct {
+	RoleFilter   string
+	ActiveFilter pgtype.Bool
+	PageOffset   int32
+	PageLimit    int32
+}
+
+type ListUsersRow struct {
+	ID           pgtype.UUID
+	Name         string
+	Email        string
+	PasswordHash string
+	RoleID       int16
+	IsActive     bool
+	CreatedAt    pgtype.Timestamptz
+	UpdatedAt    pgtype.Timestamptz
+	Role         string
+}
+
+func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]ListUsersRow, error) {
+	rows, err := q.db.Query(ctx, listUsers,
+		arg.RoleFilter,
+		arg.ActiveFilter,
+		arg.PageOffset,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListUsersRow{}
+	for rows.Next() {
+		var i ListUsersRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Email,
+			&i.PasswordHash,
+			&i.RoleID,
+			&i.IsActive,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Role,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const lockUser = `-- name: LockUser :one
+SELECT id, name, email, password_hash, role_id, is_active, created_at, updated_at FROM users WHERE id=$1 FOR UPDATE
+`
+
+func (q *Queries) LockUser(ctx context.Context, id pgtype.UUID) (User, error) {
+	row := q.db.QueryRow(ctx, lockUser, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Email,
+		&i.PasswordHash,
+		&i.RoleID,
+		&i.IsActive,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const lockUserAdministration = `-- name: LockUserAdministration :exec
 SELECT pg_advisory_xact_lock(716493001)
 `
@@ -128,4 +238,65 @@ SELECT pg_advisory_xact_lock(716493001)
 func (q *Queries) LockUserAdministration(ctx context.Context) error {
 	_, err := q.db.Exec(ctx, lockUserAdministration)
 	return err
+}
+
+const updateUser = `-- name: UpdateUser :one
+UPDATE users SET name=$2,email=$3,password_hash=$4,is_active=$5,updated_at=clock_timestamp() WHERE id=$1 RETURNING id, name, email, password_hash, role_id, is_active, created_at, updated_at
+`
+
+type UpdateUserParams struct {
+	ID           pgtype.UUID
+	Name         string
+	Email        string
+	PasswordHash string
+	IsActive     bool
+}
+
+func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error) {
+	row := q.db.QueryRow(ctx, updateUser,
+		arg.ID,
+		arg.Name,
+		arg.Email,
+		arg.PasswordHash,
+		arg.IsActive,
+	)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Email,
+		&i.PasswordHash,
+		&i.RoleID,
+		&i.IsActive,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const userHasActiveOrders = `-- name: UserHasActiveOrders :one
+SELECT EXISTS(SELECT 1 FROM work_orders WHERE assigned_to=$1 AND status IN ('ASSIGNED','IN_PROGRESS'))
+`
+
+func (q *Queries) UserHasActiveOrders(ctx context.Context, assignedTo pgtype.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, userHasActiveOrders, assignedTo)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const userHasPermission = `-- name: UserHasPermission :one
+SELECT EXISTS(SELECT 1 FROM users u JOIN role_permissions rp ON rp.role_id=u.role_id JOIN permissions p ON p.id=rp.permission_id WHERE u.id=$1 AND u.is_active AND p.code=$2)
+`
+
+type UserHasPermissionParams struct {
+	ID   pgtype.UUID
+	Code string
+}
+
+func (q *Queries) UserHasPermission(ctx context.Context, arg UserHasPermissionParams) (bool, error) {
+	row := q.db.QueryRow(ctx, userHasPermission, arg.ID, arg.Code)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }

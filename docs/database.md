@@ -115,7 +115,7 @@ Use READ COMMITTED for mutations. Every work-order mutation locks its work-order
 
 Order creation locks the asset `FOR SHARE` before checking asset status and inserting. Asset status changes/deletion lock that asset `FOR UPDATE` before checking related orders. No operation acquires an asset lock after acquiring a work-order lock. Multiple rows of the same kind are locked in ascending UUID order.
 
-All user writes take a transaction-scoped advisory lock with a fixed documented user-administration key, then target row locks. User deactivation cannot deactivate the caller and cannot remove the last active ADMIN. Serialize the admin count and write under this lock; bootstrap uses the same lock and refuses if any administrator exists. Work-order assignment never waits for this advisory lock, so it does not create a user-admin lock cycle.
+All user writes take a transaction-scoped advisory lock with user-administration key 716493001, then target row locks. User deactivation cannot deactivate the caller and cannot remove the last active ADMIN. Serialize the admin count and write under this lock; bootstrap uses the same lock and refuses if any administrator exists. Work-order assignment never waits for this advisory lock, so it does not create a user-admin lock cycle.
 
 Recheck current actor active status/permission at the start of each write transaction. Concurrent authorization changes take effect for transactions whose authorization check begins after that change commits; an already-authorized transaction may finish. Runtime role-permission edits are not exposed in V1.
 

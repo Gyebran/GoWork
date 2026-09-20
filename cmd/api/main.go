@@ -14,6 +14,8 @@ import (
 	"github.com/Gyebran/GoWork/internal/platform/database"
 	dbsql "github.com/Gyebran/GoWork/internal/platform/database/sqlc"
 	"github.com/Gyebran/GoWork/internal/platform/httpx"
+	"github.com/Gyebran/GoWork/internal/users"
+	"github.com/go-chi/chi/v5"
 )
 
 func main() { os.Exit(run()) }
@@ -46,7 +48,10 @@ func run() int {
 		return 1
 	}
 	handlers := auth.NewHandler(authService, logger)
-	server := httpx.NewServer(net.JoinHostPort("0.0.0.0", strconv.Itoa(cfg.Port)), httpx.NewRouterWithRoutes(logger, readiness, handlers.Register), logger)
+	server := httpx.NewServer(net.JoinHostPort("0.0.0.0", strconv.Itoa(cfg.Port)), httpx.NewRouterWithRoutes(logger, readiness, func(r chi.Router) {
+		handlers.Register(r)
+		users.NewHandler(users.NewService(pool), handlers, logger).Register(r)
+	}), logger)
 	ln, err := net.Listen("tcp", server.Addr)
 	if err != nil {
 		logger.Error("listen_failed", "error", err.Error())

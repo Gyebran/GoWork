@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: GoWork API
   version: 0.1.0
-  description: 'V1 design contract. Milestones 1–3 implement GET /health, GET /ready, POST /api/v1/auth/login and GET /api/v1/auth/me;
+  description: 'V1 design contract. Milestones 1–4 implement health/readiness, authentication and user management;
     business endpoints remain planned. Read docs/contracts.md for ownership, lifecycle
     and validation rules. 1 MiB JSON body limit; reject unknown/repeated query parameters
     and duplicate JSON keys. Global routing errors: 404 NOT_FOUND, 405 METHOD_NOT_ALLOWED.
@@ -206,6 +206,7 @@ paths:
   /api/v1/users:
     get:
       operationId: listUsers
+      x-implemented-milestone: 4
       tags:
       - User
       summary: listUsers
@@ -273,6 +274,7 @@ paths:
         description: Exact filter; combines with AND and authorization scope.
     post:
       operationId: createUser
+      x-implemented-milestone: 4
       tags:
       - User
       summary: createUser
@@ -324,6 +326,7 @@ paths:
   /api/v1/users/{id}:
     get:
       operationId: getUser
+      x-implemented-milestone: 4
       tags:
       - User
       summary: getUser
@@ -363,6 +366,7 @@ paths:
           format: uuid
     patch:
       operationId: updateUser
+      x-implemented-milestone: 4
       tags:
       - User
       summary: updateUser

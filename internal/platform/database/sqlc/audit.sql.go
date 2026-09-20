@@ -38,3 +38,27 @@ func (q *Queries) InsertAudit(ctx context.Context, arg InsertAuditParams) error 
 	)
 	return err
 }
+
+const insertUserUpdateAudit = `-- name: InsertUserUpdateAudit :exec
+INSERT INTO audit_logs(actor_id,action,entity_type,entity_id,old_value,new_value,request_id)
+VALUES($1,'USER_UPDATED','user',$2,$3,$4,$5)
+`
+
+type InsertUserUpdateAuditParams struct {
+	ActorID   pgtype.UUID
+	EntityID  pgtype.UUID
+	OldValue  []byte
+	NewValue  []byte
+	RequestID string
+}
+
+func (q *Queries) InsertUserUpdateAudit(ctx context.Context, arg InsertUserUpdateAuditParams) error {
+	_, err := q.db.Exec(ctx, insertUserUpdateAudit,
+		arg.ActorID,
+		arg.EntityID,
+		arg.OldValue,
+		arg.NewValue,
+		arg.RequestID,
+	)
+	return err
+}

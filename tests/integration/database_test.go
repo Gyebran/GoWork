@@ -26,7 +26,7 @@ func TestDatabaseFoundation(t *testing.T) {
 	if err := migrations.ValidateTestURL(dsn, os.Getenv("APP_ENV")); err != nil {
 		t.Fatal(err)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
 	defer cancel()
 	pool, err := database.Open(ctx, dsn, 5, false)
 	if err != nil {
@@ -219,6 +219,7 @@ func TestDatabaseFoundation(t *testing.T) {
 		}
 	})
 	t.Run("authentication and bootstrap", func(t *testing.T) { authIntegration(t, ctx, pool) })
+	t.Run("RBAC and user management", func(t *testing.T) { usersIntegration(t, ctx, pool) })
 
 }
 

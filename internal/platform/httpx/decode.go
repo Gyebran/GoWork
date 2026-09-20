@@ -12,8 +12,8 @@ import (
 
 const MaxBodyBytes = 1 << 20
 
-// DecodeStringObject is for flat string DTOs such as login, not arbitrary JSON.
-func DecodeStringObject(w http.ResponseWriter, r *http.Request, allowed ...string) (map[string]string, bool) {
+// DecodeObject validates flat typed DTOs before domain validation.
+func DecodeObject(w http.ResponseWriter, r *http.Request, fields map[string]string) (map[string]json.RawMessage, bool) {
 	media, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	if err != nil || media != "application/json" {
 		WriteError(w, r, 415, "UNSUPPORTED_MEDIA_TYPE", "Use application/json")
@@ -29,7 +29,7 @@ func DecodeStringObject(w http.ResponseWriter, r *http.Request, allowed ...strin
 		}
 		return nil, false
 	}
-	bad := func() (map[string]string, bool) {
+	bad := func() (map[string]json.RawMessage, bool) {
 		WriteError(w, r, 400, "INVALID_JSON", "Invalid JSON object")
 		return nil, false
 	}
@@ -41,7 +41,7 @@ func DecodeStringObject(w http.ResponseWriter, r *http.Request, allowed ...strin
 	if err != nil || tok != json.Delim('{') {
 		return bad()
 	}
-	values := map[string]string{}
+	values := map[string]json.RawMessage{}
 	seen := map[string]bool{}
 	invalidFields := false
 	for dec.More() {
@@ -58,12 +58,7 @@ func DecodeStringObject(w http.ResponseWriter, r *http.Request, allowed ...strin
 		if dec.Decode(&raw) != nil {
 			return bad()
 		}
-		known := false
-		for _, a := range allowed {
-			if a == key {
-				known = true
-			}
-		}
+		kind, known := fields[key]
 		if !known {
 			invalidFields = true
 			continue
@@ -72,11 +67,19 @@ func DecodeStringObject(w http.ResponseWriter, r *http.Request, allowed ...strin
 			invalidFields = true
 			continue
 		}
-		var value string
-		if json.Unmarshal(raw, &value) != nil {
+		var value any
+		switch kind {
+		case "string":
+			value = new(string)
+		case "bool":
+			value = new(bool)
+		default:
 			return bad()
 		}
-		values[key] = value
+		if json.Unmarshal(raw, value) != nil {
+			return bad()
+		}
+		values[key] = raw
 	}
 	tok, err = dec.Token()
 	if err != nil || tok != json.Delim('}') {
@@ -88,6 +91,25 @@ func DecodeStringObject(w http.ResponseWriter, r *http.Request, allowed ...strin
 	if invalidFields {
 		WriteError(w, r, 422, "VALIDATION_ERROR", "Unknown or null fields are not allowed")
 		return nil, false
+	}
+	return values, true
+}
+
+// DecodeStringObject preserves the login DTO contract.
+func DecodeStringObject(w http.ResponseWriter, r *http.Request, allowed ...string) (map[string]string, bool) {
+	fields := map[string]string{}
+	for _, key := range allowed {
+		fields[key] = "string"
+	}
+	raw, ok := DecodeObject(w, r, fields)
+	if !ok {
+		return nil, false
+	}
+	values := map[string]string{}
+	for key, v := range raw {
+		var s string
+		_ = json.Unmarshal(v, &s)
+		values[key] = s
 	}
 	return values, true
 }
