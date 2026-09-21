@@ -16,6 +16,7 @@ import (
 	dbsql "github.com/Gyebran/GoWork/internal/platform/database/sqlc"
 	"github.com/Gyebran/GoWork/internal/platform/httpx"
 	"github.com/Gyebran/GoWork/internal/users"
+	"github.com/Gyebran/GoWork/internal/workorders"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -53,6 +54,7 @@ func run() int {
 		handlers.Register(r)
 		users.NewHandler(users.NewService(pool), handlers, logger).Register(r)
 		assets.NewHandler(assets.NewService(pool), handlers, logger).Register(r)
+		workorders.NewHandler(workorders.NewService(pool), handlers, logger).Register(r)
 	}), logger)
 	ln, err := net.Listen("tcp", server.Addr)
 	if err != nil {

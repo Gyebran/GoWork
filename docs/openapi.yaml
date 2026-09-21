@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: GoWork API
   version: 0.1.0
-  description: 'V1 design contract. Milestones 1–5 implement health/readiness, authentication, users and assets;
+  description: 'V1 design contract. Milestones 1–6 implement health/readiness, authentication, users, assets and work orders;
     business endpoints remain planned. Read docs/contracts.md for ownership, lifecycle
     and validation rules. 1 MiB JSON body limit; reject unknown/repeated query parameters
     and duplicate JSON keys. Global routing errors: 404 NOT_FOUND, 405 METHOD_NOT_ALLOWED.
@@ -690,6 +690,7 @@ paths:
   /api/v1/work-orders:
     get:
       operationId: listWorkOrders
+      x-implemented-milestone: 6
       tags:
       - WorkOrder
       summary: listWorkOrders
@@ -776,6 +777,7 @@ paths:
         description: Exact filter; combines with AND and authorization scope.
     post:
       operationId: createWorkOrder
+      x-implemented-milestone: 6
       tags:
       - WorkOrder
       summary: createWorkOrder
@@ -829,6 +831,7 @@ paths:
   /api/v1/work-orders/{id}:
     get:
       operationId: getWorkOrder
+      x-implemented-milestone: 6
       tags:
       - WorkOrder
       summary: getWorkOrder
@@ -868,6 +871,7 @@ paths:
         schema: *id001
     patch:
       operationId: updateWorkOrder
+      x-implemented-milestone: 6
       tags:
       - WorkOrder
       summary: updateWorkOrder
@@ -924,6 +928,7 @@ paths:
   /api/v1/work-orders/{id}/assign:
     patch:
       operationId: assignWorkOrder
+      x-implemented-milestone: 6
       tags:
       - WorkOrder
       summary: assignWorkOrder
@@ -979,6 +984,7 @@ paths:
   /api/v1/work-orders/{id}/status:
     patch:
       operationId: changeWorkOrderStatus
+      x-implemented-milestone: 6
       tags:
       - WorkOrder
       summary: changeWorkOrderStatus

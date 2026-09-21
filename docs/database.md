@@ -111,7 +111,7 @@ New orders require ACTIVE or MAINTENANCE assets; INACTIVE/RETIRED assets are rej
 
 ## Concurrency and atomicity
 
-Use READ COMMITTED for mutations. Every work-order mutation locks its work-order row `FOR UPDATE`, then validates lifecycle/ownership using the locked value. Assignment also locks target user `FOR SHARE`, checks active/role, and writes assignment+status+audits in the same transaction. User deactivation locks the user row `FOR UPDATE`, then checks nonterminal assignments. This serializes deactivation against assignment; checks after a lock wait use a fresh statement snapshot.
+Use READ COMMITTED for mutations. Every work-order mutation locks its work-order row `FOR UPDATE`, then validates lifecycle/ownership using the locked value. Assignment prelocks actor and target user `FOR SHARE` in ascending UUID order before the work-order lock, then checks target active/role and writes assignment+status+audits in the same transaction. User deactivation locks the user row `FOR UPDATE`, then checks nonterminal assignments. This serializes deactivation against assignment; checks after a lock wait use a fresh statement snapshot.
 
 Order creation locks the asset `FOR SHARE` before checking asset status and inserting. Asset status changes/deletion lock that asset `FOR UPDATE` before checking related orders. No operation acquires an asset lock after acquiring a work-order lock. Multiple rows of the same kind are locked in ascending UUID order.
 
