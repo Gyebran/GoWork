@@ -1,6 +1,6 @@
 # Milestone 5 — assets
 
-Implementation prepared on 2026-09-21; verification pending.
+Completed and verified on 2026-09-21.
 
 ## Delivered behavior
 
@@ -24,4 +24,6 @@ Use M2 database setup and M3 authentication setup, then `make run`. Login as a b
 
 Required checks: formatting, vet, race tests, all binaries, reproducible sqlc, and actual PostgreSQL HTTP tests for permissions, immutable fields, search escaping, pagination, deduplicated technician scope, terminal history, no-op timestamps/audits, status/delete guards, audit rollback on all three write paths, preserved delete audit, and concurrent retirement/order creation.
 
-Evidence pending. No public deployment is claimed. M6 work-order features have not started.
+Local `make check` passed with Go 1.27.1, and the integration suite compiled with its test-database guard passing. [GitHub Actions run 35588444121](https://github.com/Gyebran/GoWork/actions/runs/35588444121) passed `make check`, reproducible sqlc generation, and the complete PostgreSQL 16.10 integration suite on implementation commit `15df3cd1415794f174e9a331b4d8e443cc76eb3c`. This includes M2–M4 regression checks and the M5 scenarios above. The completion commit changes documentation only.
+
+No public deployment is claimed. M6 work-order features have not started.

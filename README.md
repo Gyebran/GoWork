@@ -2,7 +2,7 @@
 
 Work Order Management REST API — a backend engineering portfolio project.
 
-**Status: Milestones 0–4 complete; Milestone 5 asset verification in progress.**
+**Status: Milestones 0–5 complete; scoped asset management and PostgreSQL verification passed.**
 
 GoWork will manage operational assets, technician assignments and work-order lifecycles with database-backed permissions and transactional auditing. It is a modular monolith with no frontend or ORM.
 
