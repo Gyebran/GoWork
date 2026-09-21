@@ -1,6 +1,6 @@
 # Milestone 6 — work orders
 
-Implementation prepared; verification pending.
+Completed and verified.
 
 ## Delivered API
 
@@ -35,4 +35,6 @@ No new migration, environment variable or dependency is required. Use M2 databas
 
 Required checks include all prior milestone regressions; lifecycle matrix, server-owned field rejection, asset availability, assignee validity, role/ownership checks, scoped filters/count, reassignment and cancellation, terminal guards, metadata no-ops, audit rollback across all write paths, concurrent completion, concurrent sequence allocation above six digits, and assignment waiting for deactivation.
 
-Evidence pending. No public deployment is claimed. M7 has not started.
+Local `make check` passed with Go 1.27.1; the integration suite compiled and its test-database guard passed locally. [GitHub Actions run 35623863544](https://github.com/Gyebran/GoWork/actions/runs/35623863544) passed `make check`, reproducible sqlc generation and the complete PostgreSQL 16.10 integration suite on implementation commit `dc15d6e3470f1f2fbf52588d4b752b95c5124e69`. This includes M2–M5 regressions, all M6 cases above, and creation waiting for concurrent asset retirement. The completion commit changes documentation only.
+
+No public deployment is claimed. M7 has not started.
