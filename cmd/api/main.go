@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"syscall"
 
+	"github.com/Gyebran/GoWork/internal/assets"
 	"github.com/Gyebran/GoWork/internal/auth"
 	"github.com/Gyebran/GoWork/internal/platform/config"
 	"github.com/Gyebran/GoWork/internal/platform/database"
@@ -51,6 +52,7 @@ func run() int {
 	server := httpx.NewServer(net.JoinHostPort("0.0.0.0", strconv.Itoa(cfg.Port)), httpx.NewRouterWithRoutes(logger, readiness, func(r chi.Router) {
 		handlers.Register(r)
 		users.NewHandler(users.NewService(pool), handlers, logger).Register(r)
+		assets.NewHandler(assets.NewService(pool), handlers, logger).Register(r)
 	}), logger)
 	ln, err := net.Listen("tcp", server.Addr)
 	if err != nil {

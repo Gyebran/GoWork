@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: GoWork API
   version: 0.1.0
-  description: 'V1 design contract. Milestones 1–4 implement health/readiness, authentication and user management;
+  description: 'V1 design contract. Milestones 1–5 implement health/readiness, authentication, users and assets;
     business endpoints remain planned. Read docs/contracts.md for ownership, lifecycle
     and validation rules. 1 MiB JSON body limit; reject unknown/repeated query parameters
     and duplicate JSON keys. Global routing errors: 404 NOT_FOUND, 405 METHOD_NOT_ALLOWED.
@@ -423,6 +423,7 @@ paths:
   /api/v1/assets:
     get:
       operationId: listAssets
+      x-implemented-milestone: 5
       tags:
       - Asset
       summary: listAssets
@@ -503,6 +504,7 @@ paths:
         description: Literal case-insensitive substring of name, code or location.
     post:
       operationId: createAsset
+      x-implemented-milestone: 5
       tags:
       - Asset
       summary: createAsset
@@ -554,6 +556,7 @@ paths:
   /api/v1/assets/{id}:
     get:
       operationId: getAsset
+      x-implemented-milestone: 5
       tags:
       - Asset
       summary: getAsset
@@ -593,6 +596,7 @@ paths:
         schema: *id001
     patch:
       operationId: updateAsset
+      x-implemented-milestone: 5
       tags:
       - Asset
       summary: updateAsset
@@ -648,6 +652,7 @@ paths:
               $ref: '#/components/schemas/AssetPatch'
     delete:
       operationId: deleteAsset
+      x-implemented-milestone: 5
       tags:
       - Asset
       summary: deleteAsset

@@ -220,6 +220,7 @@ func TestDatabaseFoundation(t *testing.T) {
 	})
 	t.Run("authentication and bootstrap", func(t *testing.T) { authIntegration(t, ctx, pool) })
 	t.Run("RBAC and user management", func(t *testing.T) { usersIntegration(t, ctx, pool) })
+	t.Run("asset management", func(t *testing.T) { assetsIntegration(t, ctx, pool) })
 
 }
 
