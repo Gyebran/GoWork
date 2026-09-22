@@ -1,6 +1,6 @@
 # Milestone 8 — testing hardening
 
-Implementation prepared on 2026-09-22; verification pending.
+Completed and verified on 2026-09-22.
 
 ## Concrete fixes and added evidence
 
@@ -81,4 +81,4 @@ Each row below identifies an independently asserted behavior; table-driven cases
 
 ## Verification
 
-Evidence pending. Required gates: formatting, vet, race unit tests, binaries, reproducible sqlc and complete PostgreSQL integration suite. No public deployment or load-test performance claim. M9 Docker packaging remains unstarted.
+Local `make check` passed with Go 1.27.1, and the integration suite compiled with its test-database guard passing. [GitHub Actions run 35676180762](https://github.com/Gyebran/GoWork/actions/runs/35676180762) passed formatting, vet, race unit tests, binaries, reproducible sqlc and the complete PostgreSQL 16.10 integration suite on implementation commit `fd0464db20ce990b40af623147ff1e4d86c48ac2`. All 60 inventory scenarios are backed by the test sources above, including prior milestone regressions and new M8 evidence. The completion commit changes documentation only. No public deployment or load-test performance claim. M9 Docker packaging remains unstarted.
