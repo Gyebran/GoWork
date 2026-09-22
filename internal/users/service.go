@@ -62,7 +62,7 @@ func ID(raw string) (pgtype.UUID, error) {
 	return id, nil
 }
 func validName(s string) bool {
-	return utf8.ValidString(s) && utf8.RuneCountInString(s) >= 1 && utf8.RuneCountInString(s) <= 100
+	return utf8.ValidString(s) && !strings.ContainsRune(s, 0) && utf8.RuneCountInString(s) >= 1 && utf8.RuneCountInString(s) <= 100
 }
 func validRole(s string) bool { return s == "ADMIN" || s == "MANAGER" || s == "TECHNICIAN" }
 func (s *Service) Authorize(ctx context.Context, actor pgtype.UUID, permission string) error {

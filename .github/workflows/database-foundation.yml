@@ -1,7 +1,7 @@
 name: Database foundation
 on:
   push:
-    branches: [main, milestone-2, milestone-3, milestone-4, milestone-5, milestone-6, milestone-7]
+    branches: [main, milestone-2, milestone-3, milestone-4, milestone-5, milestone-6, milestone-7, milestone-8]
   pull_request:
 permissions:
   contents: read

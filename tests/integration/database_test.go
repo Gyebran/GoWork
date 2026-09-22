@@ -223,6 +223,7 @@ func TestDatabaseFoundation(t *testing.T) {
 	t.Run("asset management", func(t *testing.T) { assetsIntegration(t, ctx, pool) })
 	t.Run("work order management", func(t *testing.T) { workOrdersIntegration(t, ctx, pool) })
 	t.Run("audit read API", func(t *testing.T) { auditLogsIntegration(t, ctx, pool) })
+	t.Run("hardening", func(t *testing.T) { hardeningIntegration(t, ctx, pool) })
 
 }
 

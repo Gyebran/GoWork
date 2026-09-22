@@ -17,7 +17,7 @@ var ErrAlreadyBootstrapped = errors.New("administrator already exists")
 
 func Bootstrap(ctx context.Context, pool *pgxpool.Pool, name, email, password string) (User, error) {
 	name = strings.TrimSpace(name)
-	if !utf8.ValidString(name) || utf8.RuneCountInString(name) < 1 || utf8.RuneCountInString(name) > 100 {
+	if !utf8.ValidString(name) || strings.ContainsRune(name, 0) || utf8.RuneCountInString(name) < 1 || utf8.RuneCountInString(name) > 100 {
 		return User{}, errors.New("name must be 1 to 100 characters")
 	}
 	email, err := NormalizeEmail(email)

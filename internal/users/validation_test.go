@@ -41,3 +41,9 @@ func TestUUIDValidation(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestNameRejectsNUL(t *testing.T) {
+	if validName("name\x00suffix") {
+		t.Fatal("NUL accepted")
+	}
+}

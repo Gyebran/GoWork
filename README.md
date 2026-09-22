@@ -2,7 +2,7 @@
 
 Work Order Management REST API — a backend engineering portfolio project.
 
-**Status: Milestones 0–7 complete; audit reads and PostgreSQL verification passed.**
+**Status: Milestones 0–7 complete; Milestone 8 hardening verification in progress.**
 
 GoWork will manage operational assets, technician assignments and work-order lifecycles with database-backed permissions and transactional auditing. It is a modular monolith with no frontend or ORM.
 
@@ -21,6 +21,7 @@ Milestone 2 adds the PostgreSQL foundation. Follow [Milestone 2 setup](docs/mile
 - [Authorization, lifecycle, and HTTP contracts](docs/contracts.md)
 - [OpenAPI contract](docs/openapi.yaml)
 - [Environment, testing, deployment, and milestones](docs/execution.md)
+- [Milestone 8 hardening and scenario inventory](docs/milestone-8.md)
 - [Milestone 7 audit system](docs/milestone-7.md)
 - [Milestone 6 work orders](docs/milestone-6.md)
 - [Milestone 5 asset management](docs/milestone-5.md)
@@ -31,4 +32,4 @@ Milestone 2 adds the PostgreSQL foundation. Follow [Milestone 2 setup](docs/mile
 - [Historical Milestone 0 verification](docs/verification.md)
 - [Original project brief](docs/project-brief.txt)
 
-Planned next additions: testing hardening (M8), application Docker packaging, the full CI pipeline, and Swagger UI. PostgreSQL, pgx and sqlc are part of M2. See the architecture record for why these were selected and the milestone checklist for their introduction.
+Planned next additions: application Docker packaging (M9), the full CI pipeline, and Swagger UI. PostgreSQL, pgx and sqlc are part of M2. See the architecture record for why these were selected and the milestone checklist for their introduction.

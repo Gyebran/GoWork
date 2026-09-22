@@ -8,14 +8,17 @@ import (
 	dbsql "github.com/Gyebran/GoWork/internal/platform/database/sqlc"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var ErrWriteOutcomeUnknown = errors.New("transaction commit outcome unknown")
 
-// InTx gives every write, including the future audit writer, the same transaction.
+type Beginner interface {
+	BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error)
+}
+
+// InTx binds business writes and auditing to one transaction.
 // Callbacks must not commit or retain tx. There is deliberately no automatic retry.
-func InTx(ctx context.Context, p *pgxpool.Pool, opts pgx.TxOptions, fn func(pgx.Tx, *dbsql.Queries) error) (err error) {
+func InTx(ctx context.Context, p Beginner, opts pgx.TxOptions, fn func(pgx.Tx, *dbsql.Queries) error) (err error) {
 	tx, err := p.BeginTx(ctx, opts)
 	if err != nil {
 		return err
@@ -28,12 +31,12 @@ func InTx(ctx context.Context, p *pgxpool.Pool, opts pgx.TxOptions, fn func(pgx.
 			err = errors.Join(err, rollbackErr)
 		}
 	}()
-	if err = fn(tx, dbsql.New(p).WithTx(tx)); err != nil {
+	if err = fn(tx, dbsql.New(tx)); err != nil {
 		return err
 	}
 	if err = tx.Commit(ctx); err != nil {
 		var pgerr *pgconn.PgError
-		if !errors.As(err, &pgerr) && !errors.Is(err, pgx.ErrTxCommitRollback) {
+		if opts.AccessMode != pgx.ReadOnly && !errors.As(err, &pgerr) && !errors.Is(err, pgx.ErrTxCommitRollback) {
 			return errors.Join(ErrWriteOutcomeUnknown, err)
 		}
 	}

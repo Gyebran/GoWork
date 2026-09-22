@@ -229,3 +229,9 @@ func BenchmarkPasswordHash(b *testing.B) {
 		}
 	}
 }
+
+func TestBootstrapRejectsNULBeforeDatabase(t *testing.T) {
+	if _, err := Bootstrap(context.Background(), nil, "name\x00suffix", "admin@example.com", "long-password-2026"); err == nil {
+		t.Fatal("NUL accepted")
+	}
+}
