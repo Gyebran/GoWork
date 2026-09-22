@@ -10,6 +10,7 @@ import (
 	"syscall"
 
 	"github.com/Gyebran/GoWork/internal/assets"
+	"github.com/Gyebran/GoWork/internal/auditlog"
 	"github.com/Gyebran/GoWork/internal/auth"
 	"github.com/Gyebran/GoWork/internal/platform/config"
 	"github.com/Gyebran/GoWork/internal/platform/database"
@@ -55,6 +56,7 @@ func run() int {
 		users.NewHandler(users.NewService(pool), handlers, logger).Register(r)
 		assets.NewHandler(assets.NewService(pool), handlers, logger).Register(r)
 		workorders.NewHandler(workorders.NewService(pool), handlers, logger).Register(r)
+		auditlog.NewHandler(auditlog.NewService(pool), handlers, logger).Register(r)
 	}), logger)
 	ln, err := net.Listen("tcp", server.Addr)
 	if err != nil {

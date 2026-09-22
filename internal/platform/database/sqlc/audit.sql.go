@@ -11,6 +11,33 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countAuditLogs = `-- name: CountAuditLogs :one
+SELECT count(*) FROM audit_logs
+WHERE ($1::uuid IS NULL OR actor_id=$1::uuid)
+AND ($2::text='' OR action=$2::text)
+AND ($3::text='' OR entity_type=$3::text)
+AND ($4::uuid IS NULL OR entity_id=$4::uuid)
+`
+
+type CountAuditLogsParams struct {
+	ActorFilter  pgtype.UUID
+	ActionFilter string
+	TypeFilter   string
+	EntityFilter pgtype.UUID
+}
+
+func (q *Queries) CountAuditLogs(ctx context.Context, arg CountAuditLogsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countAuditLogs,
+		arg.ActorFilter,
+		arg.ActionFilter,
+		arg.TypeFilter,
+		arg.EntityFilter,
+	)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const insertAudit = `-- name: InsertAudit :exec
 INSERT INTO audit_logs (actor_id,action,entity_type,entity_id,old_value,new_value,request_id)
 VALUES ($1,$2,$3,$4,$5,$6,$7)
@@ -61,4 +88,59 @@ func (q *Queries) InsertUserUpdateAudit(ctx context.Context, arg InsertUserUpdat
 		arg.RequestID,
 	)
 	return err
+}
+
+const listAuditLogs = `-- name: ListAuditLogs :many
+SELECT id, actor_id, action, entity_type, entity_id, old_value, new_value, request_id, created_at FROM audit_logs
+WHERE ($1::uuid IS NULL OR actor_id=$1::uuid)
+AND ($2::text='' OR action=$2::text)
+AND ($3::text='' OR entity_type=$3::text)
+AND ($4::uuid IS NULL OR entity_id=$4::uuid)
+ORDER BY created_at DESC,id DESC LIMIT $6::int OFFSET $5::int
+`
+
+type ListAuditLogsParams struct {
+	ActorFilter  pgtype.UUID
+	ActionFilter string
+	TypeFilter   string
+	EntityFilter pgtype.UUID
+	PageOffset   int32
+	PageLimit    int32
+}
+
+func (q *Queries) ListAuditLogs(ctx context.Context, arg ListAuditLogsParams) ([]AuditLog, error) {
+	rows, err := q.db.Query(ctx, listAuditLogs,
+		arg.ActorFilter,
+		arg.ActionFilter,
+		arg.TypeFilter,
+		arg.EntityFilter,
+		arg.PageOffset,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []AuditLog{}
+	for rows.Next() {
+		var i AuditLog
+		if err := rows.Scan(
+			&i.ID,
+			&i.ActorID,
+			&i.Action,
+			&i.EntityType,
+			&i.EntityID,
+			&i.OldValue,
+			&i.NewValue,
+			&i.RequestID,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
