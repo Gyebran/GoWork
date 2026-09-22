@@ -1,6 +1,6 @@
 # Milestone 7 — audit system
 
-Implementation prepared on 2026-09-22; verification pending.
+Completed and verified on 2026-09-22.
 
 ## Read API
 
@@ -38,4 +38,6 @@ Use existing M2 database and M3 authentication setup, then `make run`. Login as 
 
 M7 tests cover role access and live permission revocation, inactive accounts, all filters and invalid inputs, tie ordering, empty pages, bootstrap nulls, actual user password-change/asset deletion/work-order assignment snapshots, request correlation, unknown secret fields and malformed snapshot rejection. The full prior suite verifies transaction rollback and runtime audit permissions.
 
-Evidence pending. No public deployment is claimed. M8 testing hardening has not started.
+Local `make check` passed with Go 1.27.1, and the integration suite compiled with its test-database guard passing. [GitHub Actions run 35675219595](https://github.com/Gyebran/GoWork/actions/runs/35675219595) passed `make check`, reproducible sqlc generation and the full PostgreSQL 16.10 integration suite on implementation commit `530bf545236fd18f3e3152329fddf6be2ed7a703`. This reruns the M2–M6 rollback/concurrency/permission checks and adds the M7 read scenarios above. The completion commit changes documentation only.
+
+No public deployment is claimed. M8 testing hardening has not started.
