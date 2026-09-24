@@ -1,0 +1,12 @@
+# Allow only build inputs; credentials and local artifacts never enter context.
+**
+!go.mod
+!go.sum
+!cmd/
+!cmd/**
+!internal/
+!internal/**
+!db/
+!db/migrations/
+!db/migrations/**
+!Dockerfile

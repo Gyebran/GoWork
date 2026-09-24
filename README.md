@@ -10,6 +10,8 @@ Currently implemented: Go configuration, chi router, JSON slog logging, request 
 
 ## Local development and verification
 
+Container setup (Docker Compose v2): copy `.env.example` to `.env`, set JWT_SECRET to a fresh `openssl rand -hex 32` value, then run `docker compose up --build -d --wait`. Check `http://localhost:8080/ready`. Accounts are created explicitly with `make docker-seed` or bootstrap; startup never seeds them automatically. See [Milestone 9 Docker setup](docs/milestone-9.md) for commands and the runtime contract.
+
 Milestone 2 adds the PostgreSQL foundation. Follow [Milestone 2 setup](docs/milestone-2.md) to start the local database, run migrations, grant runtime access and start the API. DATABASE_URL and JWT_SECRET are required. Follow [Milestone 3 setup](docs/milestone-3.md) to configure signing and create initial accounts. GET /health is process liveness; GET /ready checks database and migration readiness.
 
 `make check` runs formatting, vet, race unit tests and API/bootstrap/seed builds. `make test-integration` additionally requires APP_ENV=test and an explicit disposable TEST_DATABASE_URL. `make sqlc` regenerates typed database code. Database tests do not silently pass when the database is missing.
@@ -22,6 +24,7 @@ Milestone 2 adds the PostgreSQL foundation. Follow [Milestone 2 setup](docs/mile
 - [OpenAPI contract](docs/openapi.yaml)
 - [Environment, testing, deployment, and milestones](docs/execution.md)
 - [Milestone 8 hardening and scenario inventory](docs/milestone-8.md)
+- [Milestone 9 Docker packaging](docs/milestone-9.md)
 - [Milestone 7 audit system](docs/milestone-7.md)
 - [Milestone 6 work orders](docs/milestone-6.md)
 - [Milestone 5 asset management](docs/milestone-5.md)

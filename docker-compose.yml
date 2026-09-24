@@ -1,4 +1,62 @@
 services:
+  api:
+    build: .
+    image: gowork:local
+    environment:
+      APP_ENV: development
+      PORT: "8080"
+      LOG_LEVEL: INFO
+      DATABASE_URL: postgres://gowork_app:gowork_dev_only@postgres:5432/gowork?sslmode=disable
+      DB_MAX_CONNS: "10"
+      JWT_SECRET: ${JWT_SECRET:-}
+      JWT_ISSUER: gowork
+      JWT_AUDIENCE: gowork-api
+    ports:
+      - "127.0.0.1:${API_PORT:-8080}:8080"
+    depends_on:
+      grants:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    stop_grace_period: 25s
+    healthcheck:
+      test: [CMD, /app/gowork-probe, /ready]
+      interval: 3s
+      timeout: 3s
+      start_period: 5s
+      retries: 20
+  migrate:
+    build: .
+    image: gowork:local
+    entrypoint: [/app/gowork-migrate]
+    command: [up]
+    environment:
+      APP_ENV: development
+      MIGRATION_DATABASE_URL: postgres://gowork_owner:gowork_local_only@postgres:5432/gowork?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      disable: true
+  grants:
+    image: postgres:16.10
+    user: "65532:65532"
+    entrypoint: [psql]
+    command: [-h, postgres, -U, gowork_owner, -d, gowork, -v, ON_ERROR_STOP=1, -f, /grants.sql]
+    environment:
+      PGPASSWORD: gowork_local_only
+    volumes:
+      - ./db/local/grants.sql:/grants.sql:ro
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
   postgres:
     image: postgres:16.10
     environment:
@@ -6,7 +64,7 @@ services:
       POSTGRES_PASSWORD: gowork_local_only
       POSTGRES_DB: gowork
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./db/local/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
