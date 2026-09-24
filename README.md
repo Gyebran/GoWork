@@ -2,7 +2,7 @@
 
 Work Order Management REST API — a backend engineering portfolio project.
 
-**Status: Milestones 0–8 complete; testing hardening and PostgreSQL verification passed.**
+**Status: Milestones 0–9 complete; Docker packaging and Compose lifecycle verified.**
 
 GoWork will manage operational assets, technician assignments and work-order lifecycles with database-backed permissions and transactional auditing. It is a modular monolith with no frontend or ORM.
 
@@ -14,7 +14,7 @@ Container setup (Docker Compose v2): copy `.env.example` to `.env`, set JWT_SECR
 
 Milestone 2 adds the PostgreSQL foundation. Follow [Milestone 2 setup](docs/milestone-2.md) to start the local database, run migrations, grant runtime access and start the API. DATABASE_URL and JWT_SECRET are required. Follow [Milestone 3 setup](docs/milestone-3.md) to configure signing and create initial accounts. GET /health is process liveness; GET /ready checks database and migration readiness.
 
-`make check` runs formatting, vet, race unit tests and API/bootstrap/seed builds. `make test-integration` additionally requires APP_ENV=test and an explicit disposable TEST_DATABASE_URL. `make sqlc` regenerates typed database code. Database tests do not silently pass when the database is missing.
+`make check` runs formatting, vet, race unit tests and API/bootstrap/seed/migration/probe builds. `make test-integration` additionally requires APP_ENV=test and an explicit disposable TEST_DATABASE_URL. `make sqlc` regenerates typed database code. Database tests do not silently pass when the database is missing.
 
 ## Project documents
 
@@ -35,4 +35,4 @@ Milestone 2 adds the PostgreSQL foundation. Follow [Milestone 2 setup](docs/mile
 - [Historical Milestone 0 verification](docs/verification.md)
 - [Original project brief](docs/project-brief.txt)
 
-Planned next additions: application Docker packaging (M9), the full CI pipeline, and Swagger UI. PostgreSQL, pgx and sqlc are part of M2. See the architecture record for why these were selected and the milestone checklist for their introduction.
+Planned next additions: full CI hardening (M10) and Swagger UI (M11). PostgreSQL, pgx and sqlc are part of M2. See the architecture record for why these were selected and the milestone checklist for their introduction.

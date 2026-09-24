@@ -1,6 +1,6 @@
 # Milestone 9 — Docker
 
-Implementation prepared; container verification pending.
+Completed and container-verified on 2026-09-24.
 
 ## Run locally
 
@@ -49,5 +49,7 @@ Export those three variables before invoking the command, then unset them. Do no
 `make docker-smoke` requires Docker and Python 3. It creates a unique disposable `gowork-m9-*` Compose project, builds the image, and checks fresh startup, runtime user/read-only filesystem, credential separation, final image contents/CA roots, empty initial users, explicit seed, HTTP login/asset creation, repeated seed, down/up data and audit persistence, DB-outage liveness/readiness, graceful stop exit code, and migration-failure startup gating. Its cleanup removes only that generated project's containers and volume. Use unoccupied API_PORT/POSTGRES_PORT when running alongside another local stack.
 
 The Docker packaging workflow runs the smoke check and `make check`; the existing database workflow retains all PostgreSQL regression tests and sqlc reproducibility. This is M9 packaging evidence; the broader M10 CI hardening and intentional test-failure gate demonstration remain planned.
+
+Evidence: local `make check` passed on Go 1.27.1. [Docker packaging run 36025992396](https://github.com/Gyebran/GoWork/actions/runs/36025992396) passed all packaging checks on `75ed835e5b5d4950f8f200be7c984ac373d41d86`; measured final image size was 51,186,167 bytes (about 48.8 MiB, uncompressed, runner architecture). [PostgreSQL run 36025992402](https://github.com/Gyebran/GoWork/actions/runs/36025992402) passed the complete regression suite and reproducible sqlc on the same commit. The first Docker attempt exposed that script compatibility issue after passing startup/persistence/outage checks; the corrected full run above passed. Docker was not available in the editing workspace, so container verification ran on GitHub Actions. The completion commit changes documentation only. No deployment was performed.
 
 References: [Docker multi-stage builds](https://docs.docker.com/get-started/docker-concepts/building-images/multi-stage-builds/) and [Compose dependency order](https://docs.docker.com/compose/how-tos/startup-order/).
