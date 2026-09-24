@@ -90,7 +90,7 @@ try:
     dc("stop", "postgres")
     dc("exec", "-T", "api", "/app/gowork-probe", "/health")
     assert dc("exec", "-T", "api", "/app/gowork-probe", "/ready", check=False).returncode != 0
-    dc("start", "--wait", "--wait-timeout", "120", "postgres")
+    dc("up", "-d", "--wait", "--wait-timeout", "120", "postgres")
     dc("up", "-d", "--wait", "--wait-timeout", "120", "api")
     api = dc("ps", "-q", "api", capture=True).stdout.strip()
     dc("stop", "api")
