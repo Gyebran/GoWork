@@ -1,6 +1,6 @@
 # Milestone 10 — CI
 
-Implementation prepared; workflow verification pending.
+Completed and verified on 2026-09-25.
 
 ## Pipeline contract
 
@@ -37,6 +37,10 @@ Contract validation deliberately rejects external references before validation a
 
 ## Verification
 
-Local contract validation passed; mutated copies with duplicate keys, incorrect OpenAPI version, unresolved references and remote references all failed. CI success and intentional unit-test failure evidence will be recorded after the actual workflow runs. The failure demonstration uses an isolated branch and does not add a failing test to main.
+Local `make check` passed with Go 1.27.1. Contract validation passed; mutated copies with duplicate keys, incorrect OpenAPI version, unresolved references and remote references all failed.
+
+The isolated `milestone-10-failure-proof` branch adds only `TestMilestone10IntentionalFailure`, which calls t.Fatal, on top of the implementation commit. [Run 36157599235](https://github.com/Gyebran/GoWork/actions/runs/36157599235) on `4e2079aa72a8dadc1850a2ecb9e2c11f419e49a1` failed specifically at Race unit tests; Build all binaries was skipped, downstream PostgreSQL/Docker jobs were skipped, and CI required ran and failed. The contract job passed. This expected red run is evidence of the gate functioning, not a regression in main. The proof branch is retained for inspection and must not be merged into main.
+
+[Normal CI run 36157571556](https://github.com/Gyebran/GoWork/actions/runs/36157571556) passed all five jobs on implementation commit `ec6dbca4b7883f23397441512d4cc706fa74a820`: Go checks, OpenAPI contract, PostgreSQL integration, Docker lifecycle and CI required. This verifies the new pinned actions and actual dependency/aggregation behavior. The completion commit changes documentation only. Docker/PostgreSQL verification ran on GitHub Actions; no production deployment was performed. No application features or database migrations are changed in this milestone.
 
 References: [GitHub immutable action pins](https://docs.github.com/en/actions/reference/security/secure-use), [job dependencies](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-jobs), and [required-check skip handling](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-required-status-checks).
