@@ -35,8 +35,8 @@ All business routes use `/api/v1`; liveness/readiness/docs do not. All write req
 |---|---|---|---|
 | GET /health | Public | 200 | `{ "status": "ok" }`; no DB ping |
 | GET /ready | Public | 200 | `{ "status": "ready" }`; 503 when DB unavailable/migrations pending/shutting down |
-| GET /docs | Public | 200 HTML | Swagger UI in M11 |
-| GET /openapi.yaml | Public | 200 YAML | Same versioned contract served in M11 |
+| GET /docs | Public | 200 HTML | Swagger UI; CDN assets require internet access |
+| GET /openapi.yaml | Public | 200 YAML | Versioned contract embedded in the API binary |
 | POST /api/v1/auth/login | Public | 200 | Access token and sanitized current user |
 | GET /api/v1/auth/me | Authenticated | 200 | Current DB-backed user |
 | GET /api/v1/users | user:read | 200 | Filters role, is_active; paginated |

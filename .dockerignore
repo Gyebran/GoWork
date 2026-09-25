@@ -10,3 +10,7 @@
 !db/migrations/
 !db/migrations/**
 !Dockerfile
+!docs/
+!docs/serve.go
+!docs/openapi.yaml
+!docs/swagger.html

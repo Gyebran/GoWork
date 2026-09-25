@@ -70,6 +70,9 @@ try:
     request("/ready")
     assert sql("SELECT count(*) FROM users") == "0", "Startup must not seed demo accounts"
     dc("run", "--rm", "--no-deps", "--entrypoint", "/app/gowork-seed", "api")
+    if env.get("GOWORK_DOCS_SMOKE") == "1":
+        from docs_smoke import verify
+        verify("http://127.0.0.1:" + env.get("API_PORT", "8080"))
     token = request("/api/v1/auth/login", {
         "email": "admin@gowork.dev", "password": "GoWork-demo-only-2026!"})["data"]["access_token"]
     asset = request("/api/v1/assets", {

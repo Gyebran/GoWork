@@ -1,8 +1,10 @@
-"""Validate the standalone V1 OpenAPI document; live response parity belongs to M11."""
+"""Validate the versioned OpenAPI document and its examples."""
 from pathlib import Path
 import sys
 
 from openapi_spec_validator import validate_spec
+from jsonschema import RefResolver
+from openapi_schema_validator import OAS30Validator
 import yaml
 
 
@@ -42,6 +44,19 @@ def main():
         raise ValueError("Expected the agreed OpenAPI 3.0.3 contract")
     local_refs(spec)
     validate_spec(spec)
+    resolver = RefResolver.from_schema(spec)
+    def examples(value):
+        if isinstance(value, dict):
+            if "example" in value:
+                schema = value.get("schema", value)
+                if "type" in schema or "$ref" in schema:
+                    OAS30Validator(schema, resolver=resolver, format_checker=OAS30Validator.FORMAT_CHECKER).validate(value["example"])
+            for child in value.values():
+                examples(child)
+        elif isinstance(value, list):
+            for child in value:
+                examples(child)
+    examples(spec)
     identifiers = set()
     methods = {"get", "post", "put", "patch", "delete", "options", "head", "trace"}
     for path_item in spec["paths"].values():

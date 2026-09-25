@@ -14,7 +14,7 @@ test:
 fmt:
 	$(GO) fmt ./...
 fmt-check:
-	@test -z "$$(gofmt -l cmd internal tests)" || (gofmt -l cmd internal tests; exit 1)
+	@test -z "$$(gofmt -l cmd internal tests docs)" || (gofmt -l cmd internal tests docs; exit 1)
 vet:
 	$(GO) vet ./...
 check: fmt-check vet test build
@@ -57,3 +57,7 @@ sqlc-check: sqlc
 	@test -z "$$(git ls-files --others --exclude-standard internal/platform/database/sqlc)" || (echo "Untracked sqlc output"; exit 1)
 contract-check:
 	python3 scripts/check-contract.py
+
+.PHONY: docs-smoke
+docs-smoke:
+	GOWORK_DOCS_SMOKE=1 python3 scripts/docker-smoke.py

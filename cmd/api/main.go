@@ -4,11 +4,13 @@ import (
 	"context"
 	"log/slog"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
 	"syscall"
 
+	"github.com/Gyebran/GoWork/docs"
 	"github.com/Gyebran/GoWork/internal/assets"
 	"github.com/Gyebran/GoWork/internal/auditlog"
 	"github.com/Gyebran/GoWork/internal/auth"
@@ -19,6 +21,7 @@ import (
 	"github.com/Gyebran/GoWork/internal/users"
 	"github.com/Gyebran/GoWork/internal/workorders"
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func main() { os.Exit(run()) }
@@ -51,13 +54,7 @@ func run() int {
 		return 1
 	}
 	handlers := auth.NewHandler(authService, logger)
-	server := httpx.NewServer(net.JoinHostPort("0.0.0.0", strconv.Itoa(cfg.Port)), httpx.NewRouterWithRoutes(logger, readiness, func(r chi.Router) {
-		handlers.Register(r)
-		users.NewHandler(users.NewService(pool), handlers, logger).Register(r)
-		assets.NewHandler(assets.NewService(pool), handlers, logger).Register(r)
-		workorders.NewHandler(workorders.NewService(pool), handlers, logger).Register(r)
-		auditlog.NewHandler(auditlog.NewService(pool), handlers, logger).Register(r)
-	}), logger)
+	server := httpx.NewServer(net.JoinHostPort("0.0.0.0", strconv.Itoa(cfg.Port)), newRouter(logger, readiness, pool, handlers), logger)
 	ln, err := net.Listen("tcp", server.Addr)
 	if err != nil {
 		logger.Error("listen_failed", "error", err.Error())
@@ -68,4 +65,15 @@ func run() int {
 		return 1
 	}
 	return 0
+}
+
+func newRouter(logger *slog.Logger, readiness *httpx.Readiness, pool *pgxpool.Pool, handlers *auth.Handler) http.Handler {
+	return httpx.NewRouterWithRoutes(logger, readiness, func(r chi.Router) {
+		docs.Register(r)
+		handlers.Register(r)
+		users.NewHandler(users.NewService(pool), handlers, logger).Register(r)
+		assets.NewHandler(assets.NewService(pool), handlers, logger).Register(r)
+		workorders.NewHandler(workorders.NewService(pool), handlers, logger).Register(r)
+		auditlog.NewHandler(auditlog.NewService(pool), handlers, logger).Register(r)
+	})
 }

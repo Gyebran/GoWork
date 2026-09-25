@@ -30,6 +30,7 @@ The `CI` workflow checks Go formatting/vet/race tests/builds, the OpenAPI contra
 - [Milestone 8 hardening and scenario inventory](docs/milestone-8.md)
 - [Milestone 9 Docker packaging](docs/milestone-9.md)
 - [Milestone 10 CI pipeline](docs/milestone-10.md)
+- [Milestone 11 API documentation](docs/milestone-11.md)
 - [Milestone 7 audit system](docs/milestone-7.md)
 - [Milestone 6 work orders](docs/milestone-6.md)
 - [Milestone 5 asset management](docs/milestone-5.md)

@@ -4,6 +4,7 @@ COPY go.mod go.sum ./
 RUN go mod download && go mod verify
 COPY cmd ./cmd
 COPY internal ./internal
+COPY docs/serve.go docs/openapi.yaml docs/swagger.html ./docs/
 RUN CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/gowork-api ./cmd/api && \
     CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/gowork-migrate ./cmd/migrate && \
     CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/gowork-bootstrap ./cmd/bootstrap && \

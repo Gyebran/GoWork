@@ -1,15 +1,26 @@
 openapi: 3.0.3
 info:
   title: GoWork API
-  version: 0.1.0
-  description: 'V1 design contract. Milestones 1–7 implement health/readiness, authentication, users, assets, work orders and audit reads;
-    documentation endpoints remain planned for M11. Read docs/contracts.md for ownership, lifecycle
-    and validation rules. 1 MiB JSON body limit; reject unknown/repeated query parameters
-    and duplicate JSON keys. Global routing errors: 404 NOT_FOUND, 405 METHOD_NOT_ALLOWED.
-    All errors follow Error schema and all responses include X-Request-ID.'
+  version: 1.0.0
+  description: 'GoWork Work Order Management API. Login first, copy data.access_token, then use Authorize with the
+    token only (without the Bearer prefix). Tokens last 900 seconds; roles and active status are checked from the
+    database on every authenticated request. No refresh or logout endpoint. Password change does not revoke existing
+    tokens; deactivation does. Try it out executes real operations on the current server.
+
+
+    ADMIN manages users and all business resources; MANAGER reads users and manages assets/orders; TECHNICIAN reads
+    only assigned orders and their assets and progresses assigned orders. Permissions are database-backed, with
+    no implicit administrator bypass.
+
+
+    JSON writes have a 1 MiB limit. Unknown fields, repeated query parameters, null patches and empty patches are
+    rejected. Password bounds use UTF-8 bytes, not characters. Lists use page=1 and limit=20 by default, limit at
+    most 100; filters combine with AND. Ordering is created_at DESC,id DESC. Every response includes X-Request-ID.
+    Errors use the Error schema; 404 NOT_FOUND and 405 METHOD_NOT_ALLOWED apply to routing. A 503 WRITE_OUTCOME_UNKNOWN
+    means inspect current state before retrying a write.'
 servers:
-- url: http://localhost:8080
-  description: Planned local server, not currently running
+- url: /
+  description: Current server (same origin as this documentation)
 security:
 - bearerAuth: []
 paths:
@@ -46,6 +57,8 @@ paths:
         '503':
           $ref: '#/components/responses/503'
       x-implemented-milestone: 1
+      summary: Check process liveness
+      description: Public. Does not query PostgreSQL; remains healthy during a database outage.
   /ready:
     get:
       operationId: ready
@@ -77,6 +90,9 @@ paths:
         '503':
           $ref: '#/components/responses/503'
       x-implemented-milestone: 2
+      summary: Check database readiness
+      description: Public. Verifies database connectivity, expected migration version and shutdown state. Returns
+        503 when unavailable.
   /docs:
     get:
       operationId: swaggerUI
@@ -85,7 +101,7 @@ paths:
       security: []
       responses:
         '200':
-          description: Available in M11.
+          description: Swagger UI HTML
           headers:
             X-Request-ID:
               description: Sanitized incoming correlation ID or generated UUID.
@@ -97,6 +113,10 @@ paths:
             text/html:
               schema:
                 type: string
+      summary: Open Swagger UI
+      description: Public interactive API documentation. JavaScript/CSS load from version-pinned jsDelivr assets
+        with integrity checks. Authorizations are not persisted across reloads.
+      x-implemented-milestone: 11
   /openapi.yaml:
     get:
       operationId: openAPI
@@ -105,7 +125,7 @@ paths:
       security: []
       responses:
         '200':
-          description: Available in M11.
+          description: Embedded OpenAPI YAML
           headers:
             X-Request-ID:
               description: Sanitized incoming correlation ID or generated UUID.
@@ -117,15 +137,18 @@ paths:
             application/yaml:
               schema:
                 type: string
+      summary: Download OpenAPI
+      description: Public YAML contract embedded into the same API binary. No authentication required.
+      x-implemented-milestone: 11
   /api/v1/auth/login:
     post:
       operationId: login
       x-implemented-milestone: 3
       tags:
       - Auth
-      summary: login
-      description: Uniform 401 for missing user, wrong password or inactive user.
-        No public registration. HS256 access token, 900 seconds.
+      summary: Sign in
+      description: Uniform 401 INVALID_CREDENTIALS for missing user, wrong password or inactive user. HS256 bearer
+        token expires after 900 seconds. No public registration.
       responses:
         '200':
           description: Success
@@ -145,12 +168,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/LoginResultResponse'
+              example:
+                data:
+                  access_token: REPLACE_WITH_TOKEN_FROM_LOGIN
+                  token_type: Bearer
+                  expires_in: 900
+                  user:
+                    id: 11111111-1111-4111-8111-111111111111
+                    name: Example Technician
+                    email: technician@example.com
+                    role: TECHNICIAN
+                    is_active: true
+                    created_at: '2026-09-25T12:00:00Z'
+                    updated_at: '2026-09-25T12:00:00Z'
         '400':
           $ref: '#/components/responses/400'
         '401':
           $ref: '#/components/responses/401'
-        '409':
-          $ref: '#/components/responses/409'
         '413':
           $ref: '#/components/responses/413'
         '415':
@@ -168,14 +202,17 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Login'
+            example:
+              email: your-account@example.com
+              password: Your-own-password
   /api/v1/auth/me:
     get:
       operationId: getCurrentUser
       x-implemented-milestone: 3
       tags:
       - Auth
-      summary: getCurrentUser
-      description: Requires active authenticated user; no user:read permission required.
+      summary: Read your current account
+      description: Requires an active authenticated user; user:read permission is not required.
       responses:
         '200':
           description: Success
@@ -195,6 +232,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserResponse'
+              example:
+                data:
+                  id: 11111111-1111-4111-8111-111111111111
+                  name: Example Technician
+                  email: technician@example.com
+                  role: TECHNICIAN
+                  is_active: true
+                  created_at: '2026-09-25T12:00:00Z'
+                  updated_at: '2026-09-25T12:00:00Z'
         '401':
           $ref: '#/components/responses/401'
         '422':
@@ -209,8 +255,8 @@ paths:
       x-implemented-milestone: 4
       tags:
       - User
-      summary: listUsers
-      description: Fixed created_at DESC,id DESC order; page/count use one snapshot.
+      summary: List users
+      description: ADMIN/MANAGER with user:read. Filters role and is_active. Count and rows share one database snapshot.
       responses:
         '200':
           description: Success
@@ -225,6 +271,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserList'
+              example:
+                data:
+                - id: 11111111-1111-4111-8111-111111111111
+                  name: Example Technician
+                  email: technician@example.com
+                  role: TECHNICIAN
+                  is_active: true
+                  created_at: '2026-09-25T12:00:00Z'
+                  updated_at: '2026-09-25T12:00:00Z'
+                meta:
+                  page: 1
+                  limit: 20
+                  total: 1
+                  total_pages: 1
         '401':
           $ref: '#/components/responses/401'
         '403':
@@ -277,8 +337,9 @@ paths:
       x-implemented-milestone: 4
       tags:
       - User
-      summary: createUser
-      description: See contracts.md for policy and transactional invariants.
+      summary: Create a user
+      description: ADMIN with user:create. Creates an active account in the requested role; email is normalized
+        and must be unique. Password is 12–72 UTF-8 bytes. Returns Location.
       responses:
         '201':
           description: Success
@@ -297,6 +358,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserResponse'
+              example:
+                data:
+                  id: 11111111-1111-4111-8111-111111111111
+                  name: Example Technician
+                  email: technician@example.com
+                  role: TECHNICIAN
+                  is_active: true
+                  created_at: '2026-09-25T12:00:00Z'
+                  updated_at: '2026-09-25T12:00:00Z'
         '400':
           $ref: '#/components/responses/400'
         '401':
@@ -323,14 +393,19 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/UserCreate'
+            example:
+              name: Example Technician
+              email: technician@example.com
+              password: Example-only-password-2026!
+              role: TECHNICIAN
   /api/v1/users/{id}:
     get:
       operationId: getUser
       x-implemented-milestone: 4
       tags:
       - User
-      summary: getUser
-      description: 404 when missing; 403 for existing resource outside allowed scope.
+      summary: Read a user
+      description: ADMIN/MANAGER with user:read. Password/hash are never returned.
       responses:
         '200':
           description: Success
@@ -345,6 +420,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserResponse'
+              example:
+                data:
+                  id: 11111111-1111-4111-8111-111111111111
+                  name: Example Technician
+                  email: technician@example.com
+                  role: TECHNICIAN
+                  is_active: true
+                  created_at: '2026-09-25T12:00:00Z'
+                  updated_at: '2026-09-25T12:00:00Z'
         '401':
           $ref: '#/components/responses/401'
         '403':
@@ -355,6 +439,8 @@ paths:
           $ref: '#/components/responses/500'
         '503':
           $ref: '#/components/responses/503'
+        '422':
+          $ref: '#/components/responses/422'
       x-permissions:
       - user:read
       parameters:
@@ -369,10 +455,10 @@ paths:
       x-implemented-milestone: 4
       tags:
       - User
-      summary: updateUser
-      description: Only listed mutable fields; empty/null/unknown fields rejected.
-        See contracts.md for guards. Identical metadata returns unchanged 200 without
-        audit.
+      summary: Update a user
+      description: ADMIN with user:update. Role is immutable. Self-deactivation, last-admin deactivation and deactivation
+        of a technician with active orders are blocked. No-op updates create no audit. Password changes do not revoke
+        existing tokens.
       responses:
         '200':
           description: Success
@@ -387,6 +473,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserResponse'
+              example:
+                data:
+                  id: 11111111-1111-4111-8111-111111111111
+                  name: Example Technician
+                  email: technician@example.com
+                  role: TECHNICIAN
+                  is_active: true
+                  created_at: '2026-09-25T12:00:00Z'
+                  updated_at: '2026-09-25T12:00:00Z'
         '400':
           $ref: '#/components/responses/400'
         '401':
@@ -420,16 +515,18 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/UserPatch'
+            example:
+              name: Updated Technician
   /api/v1/assets:
     get:
       operationId: listAssets
       x-implemented-milestone: 5
       tags:
       - Asset
-      summary: listAssets
-      description: Fixed created_at DESC,id DESC order; page/count use one snapshot.
-        Technician work-order visibility is assigned_to=self; asset visibility is
-        EXISTS on assigned orders. Counts use identical scope.
+      summary: List visible assets
+      description: ADMIN/MANAGER with asset:read see all; TECHNICIAN sees assets referenced by their assigned orders,
+        including terminal orders. Search is a literal case-insensitive substring of name, asset_code or location.
+        Count and rows share a snapshot.
       responses:
         '200':
           description: Success
@@ -444,6 +541,21 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AssetList'
+              example:
+                data:
+                - id: 22222222-2222-4222-8222-222222222222
+                  asset_code: PUMP-001
+                  name: Water pump
+                  category: Utilities
+                  location: Building A
+                  status: ACTIVE
+                  created_at: '2026-09-25T12:00:00Z'
+                  updated_at: '2026-09-25T12:00:00Z'
+                meta:
+                  page: 1
+                  limit: 20
+                  total: 1
+                  total_pages: 1
         '401':
           $ref: '#/components/responses/401'
         '403':
@@ -507,8 +619,9 @@ paths:
       x-implemented-milestone: 5
       tags:
       - Asset
-      summary: createAsset
-      description: See contracts.md for policy and transactional invariants.
+      summary: Create an asset
+      description: ADMIN/MANAGER with asset:create. asset_code is unique and immutable; status defaults to ACTIVE.
+        Returns Location.
       responses:
         '201':
           description: Success
@@ -527,6 +640,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AssetResponse'
+              example:
+                data:
+                  id: 22222222-2222-4222-8222-222222222222
+                  asset_code: PUMP-001
+                  name: Water pump
+                  category: Utilities
+                  location: Building A
+                  status: ACTIVE
+                  created_at: '2026-09-25T12:00:00Z'
+                  updated_at: '2026-09-25T12:00:00Z'
         '400':
           $ref: '#/components/responses/400'
         '401':
@@ -553,16 +676,21 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/AssetCreate'
+            example:
+              asset_code: PUMP-001
+              name: Water pump
+              category: Utilities
+              location: Building A
+              status: ACTIVE
   /api/v1/assets/{id}:
     get:
       operationId: getAsset
       x-implemented-milestone: 5
       tags:
       - Asset
-      summary: getAsset
-      description: 404 when missing; 403 for existing resource outside allowed scope.
-        Technician work-order visibility is assigned_to=self; asset visibility is
-        EXISTS on assigned orders. Counts use identical scope.
+      summary: Read an asset
+      description: Requires asset:read. A technician needs an assigned order for this asset. Existing out-of-scope
+        asset returns 403; missing asset returns 404.
       responses:
         '200':
           description: Success
@@ -577,6 +705,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AssetResponse'
+              example:
+                data:
+                  id: 22222222-2222-4222-8222-222222222222
+                  asset_code: PUMP-001
+                  name: Water pump
+                  category: Utilities
+                  location: Building A
+                  status: ACTIVE
+                  created_at: '2026-09-25T12:00:00Z'
+                  updated_at: '2026-09-25T12:00:00Z'
         '401':
           $ref: '#/components/responses/401'
         '403':
@@ -587,6 +725,8 @@ paths:
           $ref: '#/components/responses/500'
         '503':
           $ref: '#/components/responses/503'
+        '422':
+          $ref: '#/components/responses/422'
       x-permissions:
       - asset:read
       parameters:
@@ -599,10 +739,9 @@ paths:
       x-implemented-milestone: 5
       tags:
       - Asset
-      summary: updateAsset
-      description: Only listed mutable fields; empty/null/unknown fields rejected.
-        See contracts.md for guards. Identical metadata returns unchanged 200 without
-        audit.
+      summary: Update an asset
+      description: ADMIN/MANAGER with asset:update. asset_code is immutable. INACTIVE/RETIRED is blocked while nonterminal
+        orders exist. No-op changes create no audit.
       responses:
         '200':
           description: Success
@@ -617,6 +756,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AssetResponse'
+              example:
+                data:
+                  id: 22222222-2222-4222-8222-222222222222
+                  asset_code: PUMP-001
+                  name: Water pump
+                  category: Utilities
+                  location: Building A
+                  status: ACTIVE
+                  created_at: '2026-09-25T12:00:00Z'
+                  updated_at: '2026-09-25T12:00:00Z'
         '400':
           $ref: '#/components/responses/400'
         '401':
@@ -650,14 +799,16 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/AssetPatch'
+            example:
+              location: Building B
     delete:
       operationId: deleteAsset
       x-implemented-milestone: 5
       tags:
       - Asset
-      summary: deleteAsset
-      description: Admin only. Referenced asset gives 409 ASSET_IN_USE. Deletion and
-        audit commit atomically.
+      summary: Delete an unreferenced asset
+      description: ADMIN with asset:delete. Any historical or active work order blocks deletion. Successful deletion
+        preserves audit history and returns an empty 204 response.
       responses:
         '204':
           description: Deleted; no body.
@@ -680,6 +831,8 @@ paths:
           $ref: '#/components/responses/500'
         '503':
           $ref: '#/components/responses/503'
+        '422':
+          $ref: '#/components/responses/422'
       x-permissions:
       - asset:delete
       parameters:
@@ -693,10 +846,9 @@ paths:
       x-implemented-milestone: 6
       tags:
       - WorkOrder
-      summary: listWorkOrders
-      description: Fixed created_at DESC,id DESC order; page/count use one snapshot.
-        Technician work-order visibility is assigned_to=self; asset visibility is
-        EXISTS on assigned orders. Counts use identical scope.
+      summary: List visible work orders
+      description: ADMIN/MANAGER with work_order:read see all. TECHNICIAN sees their assignments; filtering assigned_to
+        to a different user returns 403. Filters combine with AND; count and rows share a snapshot.
       responses:
         '200':
           description: Success
@@ -711,6 +863,25 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/WorkOrderList'
+              example:
+                data:
+                - id: 33333333-3333-4333-8333-333333333333
+                  work_order_number: WO-2026-000001
+                  asset_id: 22222222-2222-4222-8222-222222222222
+                  title: Inspect water pump
+                  description: Check the pressure reading
+                  priority: MEDIUM
+                  status: OPEN
+                  created_by: 11111111-1111-4111-8111-111111111111
+                  assigned_to: null
+                  completed_at: null
+                  created_at: '2026-09-25T12:00:00Z'
+                  updated_at: '2026-09-25T12:00:00Z'
+                meta:
+                  page: 1
+                  limit: 20
+                  total: 1
+                  total_pages: 1
         '401':
           $ref: '#/components/responses/401'
         '403':
@@ -780,8 +951,10 @@ paths:
       x-implemented-milestone: 6
       tags:
       - WorkOrder
-      summary: createWorkOrder
-      description: See contracts.md for policy and transactional invariants.
+      summary: Create a work order
+      description: ADMIN/MANAGER with work_order:create. Asset must be ACTIVE or MAINTENANCE. Server sets number,
+        creator, OPEN status and null assignee/completion. Number is WO-YYYY-sequence (at least six digits); gaps
+        are allowed. Returns Location.
       responses:
         '201':
           description: Success
@@ -800,6 +973,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/WorkOrderResponse'
+              example:
+                data:
+                  id: 33333333-3333-4333-8333-333333333333
+                  work_order_number: WO-2026-000001
+                  asset_id: 22222222-2222-4222-8222-222222222222
+                  title: Inspect water pump
+                  description: Check the pressure reading
+                  priority: MEDIUM
+                  status: OPEN
+                  created_by: 11111111-1111-4111-8111-111111111111
+                  assigned_to: null
+                  completed_at: null
+                  created_at: '2026-09-25T12:00:00Z'
+                  updated_at: '2026-09-25T12:00:00Z'
         '400':
           $ref: '#/components/responses/400'
         '401':
@@ -828,16 +1015,20 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/WorkOrderCreate'
+            example:
+              asset_id: 22222222-2222-4222-8222-222222222222
+              title: Inspect water pump
+              description: Check the pressure reading
+              priority: MEDIUM
   /api/v1/work-orders/{id}:
     get:
       operationId: getWorkOrder
       x-implemented-milestone: 6
       tags:
       - WorkOrder
-      summary: getWorkOrder
-      description: 404 when missing; 403 for existing resource outside allowed scope.
-        Technician work-order visibility is assigned_to=self; asset visibility is
-        EXISTS on assigned orders. Counts use identical scope.
+      summary: Read a work order
+      description: Requires work_order:read. TECHNICIAN must own the assignment. Existing out-of-scope order returns
+        403; missing order returns 404.
       responses:
         '200':
           description: Success
@@ -852,6 +1043,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/WorkOrderResponse'
+              example:
+                data:
+                  id: 33333333-3333-4333-8333-333333333333
+                  work_order_number: WO-2026-000001
+                  asset_id: 22222222-2222-4222-8222-222222222222
+                  title: Inspect water pump
+                  description: Check the pressure reading
+                  priority: MEDIUM
+                  status: OPEN
+                  created_by: 11111111-1111-4111-8111-111111111111
+                  assigned_to: null
+                  completed_at: null
+                  created_at: '2026-09-25T12:00:00Z'
+                  updated_at: '2026-09-25T12:00:00Z'
         '401':
           $ref: '#/components/responses/401'
         '403':
@@ -862,6 +1067,8 @@ paths:
           $ref: '#/components/responses/500'
         '503':
           $ref: '#/components/responses/503'
+        '422':
+          $ref: '#/components/responses/422'
       x-permissions:
       - work_order:read
       parameters:
@@ -874,10 +1081,9 @@ paths:
       x-implemented-milestone: 6
       tags:
       - WorkOrder
-      summary: updateWorkOrder
-      description: Only listed mutable fields; empty/null/unknown fields rejected.
-        See contracts.md for guards. Identical metadata returns unchanged 200 without
-        audit.
+      summary: Update work-order details
+      description: ADMIN/MANAGER with work_order:update. Only title, description and priority may change. Empty
+        string clears description. COMPLETED/CANCELLED orders are immutable. No-op updates create no audit.
       responses:
         '200':
           description: Success
@@ -892,6 +1098,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/WorkOrderResponse'
+              example:
+                data:
+                  id: 33333333-3333-4333-8333-333333333333
+                  work_order_number: WO-2026-000001
+                  asset_id: 22222222-2222-4222-8222-222222222222
+                  title: Inspect water pump
+                  description: Check the pressure reading
+                  priority: MEDIUM
+                  status: OPEN
+                  created_by: 11111111-1111-4111-8111-111111111111
+                  assigned_to: null
+                  completed_at: null
+                  created_at: '2026-09-25T12:00:00Z'
+                  updated_at: '2026-09-25T12:00:00Z'
         '400':
           $ref: '#/components/responses/400'
         '401':
@@ -925,15 +1145,19 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/WorkOrderPatch'
+            example:
+              description: ''
+              priority: HIGH
   /api/v1/work-orders/{id}/assign:
     patch:
       operationId: assignWorkOrder
       x-implemented-milestone: 6
       tags:
       - WorkOrder
-      summary: assignWorkOrder
-      description: OPEN→ASSIGNED or ASSIGNED reassignment to different active technician
-        only. No null unassignment. Locks and assignment/status audits are atomic.
+      summary: Assign or reassign a technician
+      description: ADMIN/MANAGER with work_order:assign. Target must be an active TECHNICIAN. OPEN assignment atomically
+        sets ASSIGNED and writes two audit events. Reassignment is allowed only in ASSIGNED to a different technician.
+        No unassignment; terminal orders are immutable.
       responses:
         '200':
           description: Success
@@ -948,6 +1172,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/WorkOrderResponse'
+              example:
+                data:
+                  id: 33333333-3333-4333-8333-333333333333
+                  work_order_number: WO-2026-000001
+                  asset_id: 22222222-2222-4222-8222-222222222222
+                  title: Inspect water pump
+                  description: Check the pressure reading
+                  priority: MEDIUM
+                  status: OPEN
+                  created_by: 11111111-1111-4111-8111-111111111111
+                  assigned_to: null
+                  completed_at: null
+                  created_at: '2026-09-25T12:00:00Z'
+                  updated_at: '2026-09-25T12:00:00Z'
         '400':
           $ref: '#/components/responses/400'
         '401':
@@ -981,17 +1219,18 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Assignment'
+            example:
+              assigned_to: 11111111-1111-4111-8111-111111111111
   /api/v1/work-orders/{id}/status:
     patch:
       operationId: changeWorkOrderStatus
       x-implemented-milestone: 6
       tags:
       - WorkOrder
-      summary: changeWorkOrderStatus
-      description: 'Permission selected by target: CANCELLED requires work_order:cancel;
-        other targets require work_order:status:update. Technician must own order.
-        ASSIGNED→IN_PROGRESS→COMPLETED; cancellation from any nonterminal. Others
-        409.'
+      summary: Progress or cancel a work order
+      description: ASSIGNED → IN_PROGRESS → COMPLETED requires work_order:status:update and, for TECHNICIAN, ownership.
+        Only ADMIN/MANAGER with work_order:cancel may cancel OPEN/ASSIGNED/IN_PROGRESS. Completion sets completed_at.
+        Repeated/invalid transitions conflict; terminal orders cannot change.
       responses:
         '200':
           description: Success
@@ -1006,6 +1245,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/WorkOrderResponse'
+              example:
+                data:
+                  id: 33333333-3333-4333-8333-333333333333
+                  work_order_number: WO-2026-000001
+                  asset_id: 22222222-2222-4222-8222-222222222222
+                  title: Inspect water pump
+                  description: Check the pressure reading
+                  priority: MEDIUM
+                  status: OPEN
+                  created_by: 11111111-1111-4111-8111-111111111111
+                  assigned_to: null
+                  completed_at: null
+                  created_at: '2026-09-25T12:00:00Z'
+                  updated_at: '2026-09-25T12:00:00Z'
         '400':
           $ref: '#/components/responses/400'
         '401':
@@ -1040,15 +1293,18 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/StatusChange'
+            example:
+              status: IN_PROGRESS
   /api/v1/audit-logs:
     get:
       operationId: listAuditLogs
       x-implemented-milestone: 7
       tags:
       - Audit
-      summary: listAuditLogs
-      description: Admin/manager only. Sanitized snapshots. Stable pagination; audit
-        entity_id filter requires entity_type.
+      summary: List audit events
+      description: ADMIN/MANAGER with audit:read. Filter by actor_id, action, entity_type and entity_id; entity_id
+        requires entity_type. Snapshots omit secret fields. Bootstrap actor_id and absent snapshots are null. Count
+        and rows share a snapshot.
       responses:
         '200':
           description: Success
@@ -1063,6 +1319,30 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuditLogList'
+              example:
+                data:
+                - id: 33333333-3333-4333-8333-333333333333
+                  actor_id: 11111111-1111-4111-8111-111111111111
+                  action: ASSET_CREATED
+                  entity_type: asset
+                  entity_id: 22222222-2222-4222-8222-222222222222
+                  old_value: null
+                  new_value:
+                    id: 22222222-2222-4222-8222-222222222222
+                    asset_code: PUMP-001
+                    name: Water pump
+                    category: Utilities
+                    location: Building A
+                    status: ACTIVE
+                    created_at: '2026-09-25T12:00:00Z'
+                    updated_at: '2026-09-25T12:00:00Z'
+                  request_id: example-request-001
+                  created_at: '2026-09-25T12:00:00Z'
+                meta:
+                  page: 1
+                  limit: 20
+                  total: 1
+                  total_pages: 1
         '401':
           $ref: '#/components/responses/401'
         '403':
@@ -1137,6 +1417,8 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+      description: Paste data.access_token from login; Swagger adds Bearer automatically. Token expires after 900
+        seconds. Authorization is held in memory only.
   schemas:
     User:
       type: object
@@ -1168,6 +1450,14 @@ components:
       - is_active
       - created_at
       - updated_at
+      example:
+        id: 11111111-1111-4111-8111-111111111111
+        name: Example Technician
+        email: technician@example.com
+        role: TECHNICIAN
+        is_active: true
+        created_at: '2026-09-25T12:00:00Z'
+        updated_at: '2026-09-25T12:00:00Z'
     Asset:
       type: object
       additionalProperties: false
@@ -1197,6 +1487,15 @@ components:
       - status
       - created_at
       - updated_at
+      example:
+        id: 22222222-2222-4222-8222-222222222222
+        asset_code: PUMP-001
+        name: Water pump
+        category: Utilities
+        location: Building A
+        status: ACTIVE
+        created_at: '2026-09-25T12:00:00Z'
+        updated_at: '2026-09-25T12:00:00Z'
     WorkOrder:
       type: object
       additionalProperties: false
@@ -1239,6 +1538,19 @@ components:
       - created_at
       - updated_at
       - completed_at
+      example:
+        id: 33333333-3333-4333-8333-333333333333
+        work_order_number: WO-2026-000001
+        asset_id: 22222222-2222-4222-8222-222222222222
+        title: Inspect water pump
+        description: Check the pressure reading
+        priority: MEDIUM
+        status: OPEN
+        created_by: 11111111-1111-4111-8111-111111111111
+        assigned_to: null
+        completed_at: null
+        created_at: '2026-09-25T12:00:00Z'
+        updated_at: '2026-09-25T12:00:00Z'
     AuditLog:
       type: object
       additionalProperties: false
@@ -1278,6 +1590,24 @@ components:
       - new_value
       - request_id
       - created_at
+      example:
+        id: 33333333-3333-4333-8333-333333333333
+        actor_id: 11111111-1111-4111-8111-111111111111
+        action: ASSET_CREATED
+        entity_type: asset
+        entity_id: 22222222-2222-4222-8222-222222222222
+        old_value: null
+        new_value:
+          id: 22222222-2222-4222-8222-222222222222
+          asset_code: PUMP-001
+          name: Water pump
+          category: Utilities
+          location: Building A
+          status: ACTIVE
+          created_at: '2026-09-25T12:00:00Z'
+          updated_at: '2026-09-25T12:00:00Z'
+        request_id: example-request-001
+        created_at: '2026-09-25T12:00:00Z'
     UserCreate:
       type: object
       additionalProperties: false
@@ -1290,14 +1620,19 @@ components:
           minLength: 1
           maxLength: 72
           writeOnly: true
-          description: 12–72 UTF-8 bytes; do not trim. Byte bound is validated by
-            service in addition to schema character length.
+          description: 12–72 UTF-8 bytes; do not trim. Byte bound is validated by service in addition to schema
+            character length.
         role: *id002
       required:
       - name
       - email
       - password
       - role
+      example:
+        name: Example Technician
+        email: technician@example.com
+        password: Example-only-password-2026!
+        role: TECHNICIAN
     UserPatch:
       type: object
       additionalProperties: false
@@ -1308,6 +1643,8 @@ components:
         is_active:
           type: boolean
       minProperties: 1
+      example:
+        name: Updated Technician
     AssetCreate:
       type: object
       additionalProperties: false
@@ -1340,6 +1677,12 @@ components:
       - name
       - category
       - location
+      example:
+        asset_code: PUMP-001
+        name: Water pump
+        category: Utilities
+        location: Building A
+        status: ACTIVE
     AssetPatch:
       type: object
       additionalProperties: false
@@ -1349,6 +1692,8 @@ components:
         location: *id014
         status: *id005
       minProperties: 1
+      example:
+        location: Building B
     WorkOrderCreate:
       type: object
       additionalProperties: false
@@ -1375,6 +1720,11 @@ components:
       required:
       - asset_id
       - title
+      example:
+        asset_id: 22222222-2222-4222-8222-222222222222
+        title: Inspect water pump
+        description: Check the pressure reading
+        priority: MEDIUM
     WorkOrderPatch:
       type: object
       additionalProperties: false
@@ -1383,6 +1733,9 @@ components:
         description: *id016
         priority: *id006
       minProperties: 1
+      example:
+        description: ''
+        priority: HIGH
     Assignment:
       type: object
       additionalProperties: false
@@ -1390,6 +1743,8 @@ components:
         assigned_to: *id001
       required:
       - assigned_to
+      example:
+        assigned_to: 11111111-1111-4111-8111-111111111111
     StatusChange:
       type: object
       additionalProperties: false
@@ -1402,6 +1757,8 @@ components:
           - CANCELLED
       required:
       - status
+      example:
+        status: IN_PROGRESS
     Login:
       type: object
       additionalProperties: false
@@ -1417,6 +1774,9 @@ components:
       required:
       - email
       - password
+      example:
+        email: your-account@example.com
+        password: Your-own-password
     LoginResult:
       type: object
       additionalProperties: false
@@ -1438,6 +1798,18 @@ components:
       - token_type
       - expires_in
       - user
+      example:
+        access_token: REPLACE_WITH_TOKEN_FROM_LOGIN
+        token_type: Bearer
+        expires_in: 900
+        user:
+          id: 11111111-1111-4111-8111-111111111111
+          name: Example Technician
+          email: technician@example.com
+          role: TECHNICIAN
+          is_active: true
+          created_at: '2026-09-25T12:00:00Z'
+          updated_at: '2026-09-25T12:00:00Z'
     Error:
       type: object
       additionalProperties: false
@@ -1464,6 +1836,11 @@ components:
       required:
       - error
       - request_id
+      example:
+        error:
+          code: VALIDATION_ERROR
+          message: Request validation failed
+        request_id: example-request-001
     PageMeta:
       type: object
       additionalProperties: false
@@ -1489,6 +1866,11 @@ components:
       - limit
       - total
       - total_pages
+      example:
+        page: 1
+        limit: 20
+        total: 1
+        total_pages: 1
     UserResponse:
       type: object
       additionalProperties: false
@@ -1497,6 +1879,15 @@ components:
           $ref: '#/components/schemas/User'
       required:
       - data
+      example:
+        data:
+          id: 11111111-1111-4111-8111-111111111111
+          name: Example Technician
+          email: technician@example.com
+          role: TECHNICIAN
+          is_active: true
+          created_at: '2026-09-25T12:00:00Z'
+          updated_at: '2026-09-25T12:00:00Z'
     AssetResponse:
       type: object
       additionalProperties: false
@@ -1505,6 +1896,16 @@ components:
           $ref: '#/components/schemas/Asset'
       required:
       - data
+      example:
+        data:
+          id: 22222222-2222-4222-8222-222222222222
+          asset_code: PUMP-001
+          name: Water pump
+          category: Utilities
+          location: Building A
+          status: ACTIVE
+          created_at: '2026-09-25T12:00:00Z'
+          updated_at: '2026-09-25T12:00:00Z'
     WorkOrderResponse:
       type: object
       additionalProperties: false
@@ -1513,6 +1914,20 @@ components:
           $ref: '#/components/schemas/WorkOrder'
       required:
       - data
+      example:
+        data:
+          id: 33333333-3333-4333-8333-333333333333
+          work_order_number: WO-2026-000001
+          asset_id: 22222222-2222-4222-8222-222222222222
+          title: Inspect water pump
+          description: Check the pressure reading
+          priority: MEDIUM
+          status: OPEN
+          created_by: 11111111-1111-4111-8111-111111111111
+          assigned_to: null
+          completed_at: null
+          created_at: '2026-09-25T12:00:00Z'
+          updated_at: '2026-09-25T12:00:00Z'
     AuditLogResponse:
       type: object
       additionalProperties: false
@@ -1521,6 +1936,25 @@ components:
           $ref: '#/components/schemas/AuditLog'
       required:
       - data
+      example:
+        data:
+          id: 33333333-3333-4333-8333-333333333333
+          actor_id: 11111111-1111-4111-8111-111111111111
+          action: ASSET_CREATED
+          entity_type: asset
+          entity_id: 22222222-2222-4222-8222-222222222222
+          old_value: null
+          new_value:
+            id: 22222222-2222-4222-8222-222222222222
+            asset_code: PUMP-001
+            name: Water pump
+            category: Utilities
+            location: Building A
+            status: ACTIVE
+            created_at: '2026-09-25T12:00:00Z'
+            updated_at: '2026-09-25T12:00:00Z'
+          request_id: example-request-001
+          created_at: '2026-09-25T12:00:00Z'
     LoginResultResponse:
       type: object
       additionalProperties: false
@@ -1529,6 +1963,19 @@ components:
           $ref: '#/components/schemas/LoginResult'
       required:
       - data
+      example:
+        data:
+          access_token: REPLACE_WITH_TOKEN_FROM_LOGIN
+          token_type: Bearer
+          expires_in: 900
+          user:
+            id: 11111111-1111-4111-8111-111111111111
+            name: Example Technician
+            email: technician@example.com
+            role: TECHNICIAN
+            is_active: true
+            created_at: '2026-09-25T12:00:00Z'
+            updated_at: '2026-09-25T12:00:00Z'
     UserList:
       type: object
       additionalProperties: false
@@ -1542,6 +1989,20 @@ components:
       required:
       - data
       - meta
+      example:
+        data:
+        - id: 11111111-1111-4111-8111-111111111111
+          name: Example Technician
+          email: technician@example.com
+          role: TECHNICIAN
+          is_active: true
+          created_at: '2026-09-25T12:00:00Z'
+          updated_at: '2026-09-25T12:00:00Z'
+        meta:
+          page: 1
+          limit: 20
+          total: 1
+          total_pages: 1
     AssetList:
       type: object
       additionalProperties: false
@@ -1555,6 +2016,21 @@ components:
       required:
       - data
       - meta
+      example:
+        data:
+        - id: 22222222-2222-4222-8222-222222222222
+          asset_code: PUMP-001
+          name: Water pump
+          category: Utilities
+          location: Building A
+          status: ACTIVE
+          created_at: '2026-09-25T12:00:00Z'
+          updated_at: '2026-09-25T12:00:00Z'
+        meta:
+          page: 1
+          limit: 20
+          total: 1
+          total_pages: 1
     WorkOrderList:
       type: object
       additionalProperties: false
@@ -1568,6 +2044,25 @@ components:
       required:
       - data
       - meta
+      example:
+        data:
+        - id: 33333333-3333-4333-8333-333333333333
+          work_order_number: WO-2026-000001
+          asset_id: 22222222-2222-4222-8222-222222222222
+          title: Inspect water pump
+          description: Check the pressure reading
+          priority: MEDIUM
+          status: OPEN
+          created_by: 11111111-1111-4111-8111-111111111111
+          assigned_to: null
+          completed_at: null
+          created_at: '2026-09-25T12:00:00Z'
+          updated_at: '2026-09-25T12:00:00Z'
+        meta:
+          page: 1
+          limit: 20
+          total: 1
+          total_pages: 1
     AuditLogList:
       type: object
       additionalProperties: false
@@ -1581,6 +2076,30 @@ components:
       required:
       - data
       - meta
+      example:
+        data:
+        - id: 33333333-3333-4333-8333-333333333333
+          actor_id: 11111111-1111-4111-8111-111111111111
+          action: ASSET_CREATED
+          entity_type: asset
+          entity_id: 22222222-2222-4222-8222-222222222222
+          old_value: null
+          new_value:
+            id: 22222222-2222-4222-8222-222222222222
+            asset_code: PUMP-001
+            name: Water pump
+            category: Utilities
+            location: Building A
+            status: ACTIVE
+            created_at: '2026-09-25T12:00:00Z'
+            updated_at: '2026-09-25T12:00:00Z'
+          request_id: example-request-001
+          created_at: '2026-09-25T12:00:00Z'
+        meta:
+          page: 1
+          limit: 20
+          total: 1
+          total_pages: 1
   responses:
     '400':
       description: INVALID_JSON
@@ -1595,6 +2114,11 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: INVALID_JSON
+              message: INVALID_JSON
+            request_id: example-request-001
     '401':
       description: UNAUTHENTICATED or INVALID_CREDENTIALS
       headers:
@@ -1612,6 +2136,11 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: UNAUTHENTICATED
+              message: UNAUTHENTICATED or INVALID_CREDENTIALS
+            request_id: example-request-001
     '403':
       description: FORBIDDEN
       headers:
@@ -1625,6 +2154,11 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: FORBIDDEN
+              message: FORBIDDEN
+            request_id: example-request-001
     '404':
       description: NOT_FOUND or resource-specific *_NOT_FOUND
       headers:
@@ -1638,6 +2172,11 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: NOT_FOUND
+              message: NOT_FOUND or resource-specific *_NOT_FOUND
+            request_id: example-request-001
     '405':
       description: METHOD_NOT_ALLOWED
       headers:
@@ -1655,6 +2194,11 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: METHOD_NOT_ALLOWED
+              message: METHOD_NOT_ALLOWED
+            request_id: example-request-001
     '409':
       description: Domain conflict; see contracts.md error catalogue
       headers:
@@ -1668,6 +2212,11 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: CONCURRENT_MODIFICATION
+              message: Domain conflict; see contracts.md error catalogue
+            request_id: example-request-001
     '413':
       description: PAYLOAD_TOO_LARGE
       headers:
@@ -1681,6 +2230,11 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: PAYLOAD_TOO_LARGE
+              message: PAYLOAD_TOO_LARGE
+            request_id: example-request-001
     '415':
       description: UNSUPPORTED_MEDIA_TYPE
       headers:
@@ -1694,6 +2248,11 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: UNSUPPORTED_MEDIA_TYPE
+              message: UNSUPPORTED_MEDIA_TYPE
+            request_id: example-request-001
     '422':
       description: VALIDATION_ERROR
       headers:
@@ -1707,6 +2266,11 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: VALIDATION_ERROR
+              message: VALIDATION_ERROR
+            request_id: example-request-001
     '500':
       description: INTERNAL_ERROR
       headers:
@@ -1720,6 +2284,11 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: INTERNAL_ERROR
+              message: INTERNAL_ERROR
+            request_id: example-request-001
     '503':
       description: SERVICE_UNAVAILABLE or WRITE_OUTCOME_UNKNOWN
       headers:
@@ -1733,3 +2302,8 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: SERVICE_UNAVAILABLE
+              message: SERVICE_UNAVAILABLE or WRITE_OUTCOME_UNKNOWN
+            request_id: example-request-001

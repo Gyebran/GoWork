@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GoWork API documentation</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.33.0/swagger-ui.css"
+    integrity="sha384-Ov4/wv3j2bmct8cDc5X4ngJZohVPzEmc6uDPH8WeljUxO5vtoykvMEfbu9Vh6RaW" crossorigin="anonymous">
+</head>
+<body>
+  <p>GoWork API reference. <a href="/openapi.yaml">Download OpenAPI</a>.
+    Swagger UI assets require access to jsDelivr. Requests made with “Try it out” act on this server's data.</p>
+  <noscript>Enable JavaScript to use Swagger UI, or download the OpenAPI document.</noscript>
+  <div id="swagger-ui"></div>
+  <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.33.0/swagger-ui-bundle.js"
+    integrity="sha384-YDALVcy8kj8yltLBVi1vBiBAUqdxvus673gM8XKwiy6aDUJFXivF/KCufekjYbVf" crossorigin="anonymous"></script>
+  <script>
+    window.ui = SwaggerUIBundle({
+      url: "/openapi.yaml",
+      dom_id: "#swagger-ui",
+      deepLinking: true,
+      displayOperationId: true,
+      persistAuthorization: false,
+      queryConfigEnabled: false,
+      validatorUrl: null,
+      withCredentials: false,
+      requestInterceptor: function (request) {
+        if (new URL(request.url, window.location.href).origin !== window.location.origin) {
+          throw new Error("API requests must remain on this server");
+        }
+        return request;
+      }
+    });
+  </script>
+</body>
+</html>
