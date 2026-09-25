@@ -21,7 +21,7 @@ check: fmt-check vet test build
 
 .PHONY: sqlc test-integration migrate-up migrate-down db-up db-down db-grants
 sqlc:
-	go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 generate
+	$(GO) run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 generate
 test-integration:
 	$(GO) test -race -tags=integration -count=1 ./tests/integration/...
 migrate-up:
@@ -50,3 +50,10 @@ docker-seed:
 	docker compose run --rm --no-deps --entrypoint /app/gowork-seed api
 docker-smoke:
 	python3 scripts/docker-smoke.py
+
+.PHONY: sqlc-check contract-check
+sqlc-check: sqlc
+	git diff --exit-code -- internal/platform/database/sqlc
+	@test -z "$$(git ls-files --others --exclude-standard internal/platform/database/sqlc)" || (echo "Untracked sqlc output"; exit 1)
+contract-check:
+	python3 scripts/check-contract.py

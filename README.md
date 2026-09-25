@@ -25,6 +25,7 @@ Milestone 2 adds the PostgreSQL foundation. Follow [Milestone 2 setup](docs/mile
 - [Environment, testing, deployment, and milestones](docs/execution.md)
 - [Milestone 8 hardening and scenario inventory](docs/milestone-8.md)
 - [Milestone 9 Docker packaging](docs/milestone-9.md)
+- [Milestone 10 CI pipeline](docs/milestone-10.md)
 - [Milestone 7 audit system](docs/milestone-7.md)
 - [Milestone 6 work orders](docs/milestone-6.md)
 - [Milestone 5 asset management](docs/milestone-5.md)

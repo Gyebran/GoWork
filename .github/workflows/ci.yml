@@ -1,0 +1,108 @@
+name: CI
+on:
+  push:
+  pull_request:
+  merge_group:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+defaults:
+  run:
+    shell: bash
+jobs:
+  quality:
+    name: Go checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Formatting
+        run: make fmt-check
+      - name: Vet
+        run: make vet
+      - name: Race unit tests
+        run: make test
+      - name: Build all binaries
+        run: make build
+  contract:
+    name: OpenAPI contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r scripts/requirements-contract.txt
+      - run: make contract-check
+  postgres:
+    name: PostgreSQL integration
+    needs: quality
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16.10
+        env:
+          POSTGRES_USER: gowork_owner
+          POSTGRES_PASSWORD: ephemeral_ci_only
+          POSTGRES_DB: gowork_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U gowork_owner -d gowork_test"
+          --health-interval 2s --health-timeout 3s --health-retries 15
+    env:
+      APP_ENV: test
+      TEST_DATABASE_URL: postgres://gowork_owner:ephemeral_ci_only@localhost:5432/gowork_test?sslmode=disable
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Reproducible sqlc
+        run: make sqlc-check
+      - name: Race PostgreSQL integration tests
+        run: make test-integration
+  docker:
+    name: Docker lifecycle
+    needs: [quality, contract]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build and exercise Compose
+        run: make docker-smoke
+  ci:
+    name: CI required
+    if: ${{ always() }}
+    needs: [quality, contract, postgres, docker]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Require every gate to succeed
+        env:
+          QUALITY: ${{ needs.quality.result }}
+          CONTRACT: ${{ needs.contract.result }}
+          POSTGRES: ${{ needs.postgres.result }}
+          DOCKER: ${{ needs.docker.result }}
+        run: |
+          for result in "$QUALITY" "$CONTRACT" "$POSTGRES" "$DOCKER"; do
+            if [[ "$result" != success ]]; then
+              echo "CI failed: a required job did not succeed ($result)."
+              exit 1
+            fi
+          done
