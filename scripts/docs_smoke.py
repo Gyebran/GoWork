@@ -120,7 +120,7 @@ def verify(base):
         expect(health.locator(".live-responses-table .response-col_status:not(.col_header)")).to_have_text("200")
         page.locator(".auth-wrapper").get_by_role("button", name="Authorize").click()
         page.locator(".dialog-ux input").fill(token)
-        page.locator(".dialog-ux").get_by_role("button", name="Authorize", exact=True).click()
+        page.locator(".dialog-ux").get_by_role("button", name="Apply credentials", exact=True).click()
         page.locator(".dialog-ux").get_by_role("button", name="Close", exact=True).click()
         me = page.locator("#operations-Auth-getCurrentUser")
         me.locator(".opblock-summary").click()
