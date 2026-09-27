@@ -2,11 +2,11 @@
 
 Work Order Management REST API — a backend engineering portfolio project.
 
-**Status: Milestones 0–10 complete; unified CI passed and intentional test-failure gating verified.**
+**Status: Milestones 0–11 complete; OpenAPI and Swagger UI verified against the running API.**
 
-GoWork will manage operational assets, technician assignments and work-order lifecycles with database-backed permissions and transactional auditing. It is a modular monolith with no frontend or ORM.
+GoWork manages operational assets, technician assignments and work-order lifecycles with database-backed permissions and transactional auditing. It is a modular monolith with no frontend or ORM.
 
-Currently implemented: Go configuration, chi router, JSON slog logging, request IDs, bounded HTTP timeouts, JSON routing/errors, `/health`, and graceful shutdown. PostgreSQL migrations, pgx/sqlc, transactions and readiness are now implemented; authentication now includes login, current-user lookup, JWT, bcrypt, admin bootstrap and local demo seeding. Database-backed RBAC and user list/detail/create/update are implemented in M4. Asset CRUD, filters, technician scope and transactional auditing are implemented in M5. Work-order creation, scoped reads, metadata updates, assignment and lifecycle transitions are implemented in M6. M7 adds permission-checked audit reads, filters, pagination and snapshot sanitization. The OpenAPI file describes the intended V1 API, not a claim that every route exists.
+Currently implemented: Go configuration, chi router, JSON slog logging, request IDs, bounded HTTP timeouts, JSON routing/errors, `/health`, and graceful shutdown. PostgreSQL migrations, pgx/sqlc, transactions and readiness are now implemented; authentication now includes login, current-user lookup, JWT, bcrypt, admin bootstrap and local demo seeding. Database-backed RBAC and user list/detail/create/update are implemented in M4. Asset CRUD, filters, technician scope and transactional auditing are implemented in M5. Work-order creation, scoped reads, metadata updates, assignment and lifecycle transitions are implemented in M6. M7 adds permission-checked audit reads, filters, pagination and snapshot sanitization. M11 serves Swagger UI at `/docs` and the embedded OpenAPI contract at `/openapi.yaml`; the contract covers all 22 registered operations.
 
 ## Local development and verification
 
@@ -15,6 +15,10 @@ Container setup (Docker Compose v2): copy `.env.example` to `.env`, set JWT_SECR
 Milestone 2 adds the PostgreSQL foundation. Follow [Milestone 2 setup](docs/milestone-2.md) to start the local database, run migrations, grant runtime access and start the API. DATABASE_URL and JWT_SECRET are required. Follow [Milestone 3 setup](docs/milestone-3.md) to configure signing and create initial accounts. GET /health is process liveness; GET /ready checks database and migration readiness.
 
 `make check` runs formatting, vet, race unit tests and API/bootstrap/seed/migration/probe builds. `make test-integration` additionally requires APP_ENV=test and an explicit disposable TEST_DATABASE_URL. `make sqlc` regenerates typed database code. Database tests do not silently pass when the database is missing.
+
+## API documentation
+
+After starting the API, open `http://localhost:8080/docs`. Log in using your own account, then paste `data.access_token` into Authorize without the Bearer prefix. Try it out uses the current server. Swagger assets require access to jsDelivr; the raw `/openapi.yaml` endpoint is served directly by GoWork. See [M11 setup and verification](docs/milestone-11.md).
 
 ## Continuous integration
 
@@ -41,4 +45,4 @@ The `CI` workflow checks Go formatting/vet/race tests/builds, the OpenAPI contra
 - [Historical Milestone 0 verification](docs/verification.md)
 - [Original project brief](docs/project-brief.txt)
 
-Planned next additions: API documentation and Swagger UI (M11), production deployment (M12), and portfolio polish (M13). PostgreSQL, pgx and sqlc are part of M2. See the architecture record for why these were selected and the milestone checklist for their introduction.
+Planned next additions: production deployment (M12) and portfolio polish (M13). PostgreSQL, pgx and sqlc are part of M2. See the architecture record for why these were selected and the milestone checklist for their introduction.

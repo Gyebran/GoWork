@@ -1,6 +1,6 @@
 # Milestone 11 — API documentation and Swagger UI
 
-Implementation prepared; full CI/browser verification pending.
+Completed and verified on 2026-09-27.
 
 ## Use the documentation
 
@@ -24,6 +24,8 @@ Try it out performs real operations on the server you are viewing. Example accou
 
 ## Verification
 
+The first browser run reached the live 200 health response after all 22 HTTP operation checks, then failed because its status selector also matched the table header. The next attempt reached credential submission but used visible button text instead of Swagger 5.33.0's accessible name, `Apply credentials`. Both test selectors were corrected; application authentication and schemas were unchanged by these fixes.
+
 `cmd/api/routes_test.go` walks the same router factory used by production and compares every method/path with the embedded contract, rejecting extra/missing routes. It also requests both public documentation endpoints, checks the exact served specification and request ID, and verifies unsupported-method handling.
 
 `make docs-smoke` extends the isolated M9 Docker test project. It validates successful HTTP responses for all 22 documented operations, successful request bodies, response schemas/content types, documented headers, Location, request correlation, nullable order fields, order lifecycle and audit output. Representative 400/401/403/404/409/413/415/422 responses are schema-checked. Existing integration tests retain deeper permission/rollback/race/error coverage; these representative checks do not claim exhaustive semantic proof for every possible request.
@@ -42,3 +44,5 @@ PATH=/tmp/gowork-docs/bin:$PATH make docs-smoke
 The smoke command creates and removes its own disposable database project. It is not intended for production targets. `make docker-smoke` remains available for the original packaging-only check without browser dependencies.
 
 Reference: [Swagger UI configuration](https://swagger.io/docs/open-source-tools/swagger-ui/usage/configuration/).
+
+Verification evidence: [CI run 36293768937](https://github.com/Gyebran/GoWork/actions/runs/36293768937) on `684f84605b7255e06996b876d86c98fe130982bb` verifies Go formatting/vet/race tests/build, OpenAPI examples, sqlc reproducibility, full PostgreSQL integration and the combined Docker/Chromium checks. Docker job logs explicitly confirm all 22 operations, schema/header/error checks, Chromium rendering, Try it out and bearer authorization, followed by successful M9 lifecycle checks. Local Go and contract checks also passed during implementation. Container/browser evidence comes from GitHub Actions. The completion commit changes documentation only. No public deployment was performed; M12 remains unstarted.

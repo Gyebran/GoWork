@@ -59,7 +59,7 @@ Public docs may describe auth, but no writable demo administrator password is pu
 
 ## Milestone execution checklist
 
-Original numbering 0–13 remains intact (14 milestones total). M0 is approved; M1–M10 are complete (verification in milestone-1.md through milestone-10.md). M11–M13 remain planned. Before each milestone inspect repository status and instructions, explain changes/dependencies, implement only its slice, verify, fix, and update docs.
+Original numbering 0–13 remains intact (14 milestones total). M0 is approved; M1–M11 are complete (verification in milestone-1.md through milestone-11.md). M12–M13 remain planned. Before each milestone inspect repository status and instructions, explain changes/dependencies, implement only its slice, verify, fix, and update docs.
 
 | Milestone | Dependencies | Scope and exit gate |
 |---|---|---|
