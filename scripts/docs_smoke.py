@@ -117,7 +117,7 @@ def verify(base):
         health.locator(".opblock-summary").click()
         health.get_by_role("button", name="Try it out").click()
         health.get_by_role("button", name="Execute", exact=True).click()
-        expect(health.locator(".live-responses-table .response-col_status")).to_contain_text("200")
+        expect(health.locator(".live-responses-table .response-col_status:not(.col_header)")).to_have_text("200")
         page.locator(".auth-wrapper").get_by_role("button", name="Authorize").click()
         page.locator(".dialog-ux input").fill(token)
         page.locator(".dialog-ux").get_by_role("button", name="Authorize", exact=True).click()
@@ -126,7 +126,7 @@ def verify(base):
         me.locator(".opblock-summary").click()
         me.get_by_role("button", name="Try it out").click()
         me.get_by_role("button", name="Execute", exact=True).click()
-        expect(me.locator(".live-responses-table .response-col_status")).to_contain_text("200")
+        expect(me.locator(".live-responses-table .response-col_status:not(.col_header)")).to_have_text("200")
         page.reload(wait_until="networkidle")
         assert page.evaluate("window.ui.authSelectors.authorized().size") == 0
         assert not errors, errors
